@@ -10,6 +10,8 @@ from app.schemas.auth import (
     TokenRefresh,
     UserResponse,
     MessageResponse,
+    UpdateProfile,
+    ChangePassword,
 )
 from app.models.user import User
 from app.core.security import (
@@ -128,3 +130,36 @@ async def get_me(current_user: User = Depends(get_current_user)):
         is_active=current_user.is_active,
         created_at=current_user.created_at,
     )
+
+
+@router.put("/profile", response_model=UserResponse)
+async def update_profile(
+    data: UpdateProfile,
+    current_user: User = Depends(get_current_user),
+):
+    """Update current user's display name"""
+    current_user.full_name = data.full_name
+    await current_user.save()
+    return UserResponse(
+        user_id=current_user.user_id,
+        email=current_user.email,
+        full_name=current_user.full_name,
+        is_active=current_user.is_active,
+        created_at=current_user.created_at,
+    )
+
+
+@router.put("/password", response_model=MessageResponse)
+async def change_password(
+    data: ChangePassword,
+    current_user: User = Depends(get_current_user),
+):
+    """Change the current user's password (requires old password verification)"""
+    if not verify_password(data.old_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect",
+        )
+    current_user.hashed_password = hash_password(data.new_password)
+    await current_user.save()
+    return MessageResponse(message="Password updated successfully")

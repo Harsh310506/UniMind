@@ -25,6 +25,10 @@ class SendMessageRequest(BaseModel):
     document_ids: Optional[List[str]] = None
 
 
+class RenameConversationRequest(BaseModel):
+    title: str
+
+
 @router.post("/conversations")
 async def create_conversation(
     req: CreateConversationRequest,
@@ -202,6 +206,25 @@ async def send_message(
         "sources": sources_data,
         "timestamp": assistant_msg.timestamp.isoformat(),
     }
+
+
+@router.patch("/conversations/{conversation_id}")
+async def rename_conversation(
+    conversation_id: str,
+    req: RenameConversationRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Rename a conversation"""
+    conv = await Conversation.find_one(
+        {"conversation_id": conversation_id, "user_id": current_user.user_id}
+    )
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    conv.title = req.title.strip() or conv.title
+    conv.updated_at = datetime.utcnow()
+    await conv.save()
+    return {"conversation_id": conv.conversation_id, "title": conv.title}
 
 
 @router.delete("/conversations/{conversation_id}")

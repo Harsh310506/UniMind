@@ -62,6 +62,12 @@ export const authAPI = {
 
     refresh: (refreshToken: string) =>
         api.post<AuthTokens>('/auth/refresh', { refresh_token: refreshToken }),
+
+    updateProfile: (fullName: string) =>
+        api.put('/auth/profile', { full_name: fullName }),
+
+    changePassword: (oldPassword: string, newPassword: string) =>
+        api.put('/auth/password', { old_password: oldPassword, new_password: newPassword }),
 };
 
 // ─── Documents API ───────────────────────────────────────
@@ -106,6 +112,9 @@ export const chatAPI = {
 
     deleteConversation: (conversationId: string) =>
         api.delete(`/chat/conversations/${conversationId}`),
+
+    renameConversation: (conversationId: string, title: string) =>
+        api.patch(`/chat/conversations/${conversationId}`, { title }),
 };
 
 // ─── Quiz API ────────────────────────────────────────────

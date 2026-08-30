@@ -11,23 +11,29 @@ import {
     LogOut,
     Brain,
     Menu,
-    X
+    X,
+    Settings,
+    ChevronRight,
+    Zap
 } from 'lucide-react';
 
 const Layout: React.FC = () => {
-    const { logout } = useAuth();
+    const { logout, user } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
     const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
     const navItems = [
-        { icon: <LayoutDashboard size={20} />, label: 'Dashboard', path: '/dashboard' },
-        { icon: <FileText size={20} />, label: 'Documents', path: '/documents' },
-        { icon: <MessageSquare size={20} />, label: 'Chat', path: '/chat' },
-        { icon: <Sparkles size={20} />, label: 'Quizzes', path: '/quiz' },
-        { icon: <BarChart3 size={20} />, label: 'Sentiment', path: '/sentiment' },
-        { icon: <Mic size={20} />, label: 'Speech', path: '/speech' },
+        { icon: <LayoutDashboard size={19} />, label: 'Dashboard', path: '/dashboard', badge: null },
+        { icon: <FileText size={19} />, label: 'Documents', path: '/documents', badge: null },
+        { icon: <MessageSquare size={19} />, label: 'AI Chat', path: '/chat', badge: 'RAG' },
+        { icon: <Sparkles size={19} />, label: 'Quizzes', path: '/quiz', badge: null },
+        { icon: <BarChart3 size={19} />, label: 'Sentiment', path: '/sentiment', badge: null },
+        { icon: <Mic size={19} />, label: 'Speech-to-Text', path: '/speech', badge: 'Whisper' },
+        { icon: <Settings size={19} />, label: 'Settings', path: '/settings', badge: null },
     ];
+
+    const currentNav = navItems.find(item => item.path === location.pathname) || { label: 'UniMind' };
 
     const handleLogout = () => {
         logout();
@@ -35,192 +41,469 @@ const Layout: React.FC = () => {
     };
 
     return (
-        <div className="layout">
-            {/* Mobile Header */}
+        <div className="app-layout">
+            {/* Mobile Top Header */}
             <header className="mobile-header">
-                <div className="logo">
-                    <Brain size={24} />
-                    <span>UniMind</span>
+                <div className="brand-logo" onClick={() => navigate('/dashboard')}>
+                    <div className="brand-icon">
+                        <Brain size={20} color="#ffffff" />
+                    </div>
+                    <span className="brand-name">UniMind</span>
                 </div>
-                <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-                    {mobileMenuOpen ? <X /> : <Menu />}
+                <button className="mobile-toggle-btn" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} aria-label="Toggle Navigation">
+                    {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
                 </button>
             </header>
 
-            {/* Sidebar */}
-            <aside className={`sidebar ${mobileMenuOpen ? 'open' : ''}`}>
-                <div className="sidebar-header">
-                    <div className="logo-icon">
-                        <Brain size={24} color="white" />
+            {/* Backdrop for mobile */}
+            {mobileMenuOpen && (
+                <div className="mobile-backdrop" onClick={() => setMobileMenuOpen(false)} />
+            )}
+
+            {/* Sidebar Navigation */}
+            <aside className={`sidebar-container ${mobileMenuOpen ? 'mobile-open' : ''}`}>
+                <div className="sidebar-header" onClick={() => navigate('/dashboard')} role="button" tabIndex={0}>
+                    <div className="brand-icon">
+                        <Brain size={22} color="#ffffff" />
                     </div>
-                    <span className="logo-text">UniMind</span>
+                    <div className="brand-info">
+                        <span className="brand-title">UniMind</span>
+                        <span className="brand-subtitle">AI Knowledge Suite</span>
+                    </div>
                 </div>
 
-                <nav className="sidebar-nav">
-                    {navItems.map((item) => (
-                        <Link
-                            key={item.path}
-                            to={item.path}
-                            className={`nav-item ${location.pathname === item.path ? 'active' : ''}`}
-                            onClick={() => setMobileMenuOpen(false)}
-                        >
-                            {item.icon}
-                            <span>{item.label}</span>
-                        </Link>
-                    ))}
+                <div className="nav-section-label">PLATFORM</div>
+
+                <nav className="sidebar-nav-list">
+                    {navItems.map((item) => {
+                        const isActive = location.pathname === item.path;
+                        return (
+                            <Link
+                                key={item.path}
+                                to={item.path}
+                                className={`nav-link ${isActive ? 'active' : ''}`}
+                                onClick={() => setMobileMenuOpen(false)}
+                            >
+                                <span className="nav-icon">{item.icon}</span>
+                                <span className="nav-label">{item.label}</span>
+                                {item.badge && (
+                                    <span className="nav-badge">{item.badge}</span>
+                                )}
+                                {isActive && <span className="active-indicator" />}
+                            </Link>
+                        );
+                    })}
                 </nav>
 
-                <div className="sidebar-footer">
-                    <button onClick={handleLogout} className="logout-btn">
-                        <LogOut size={18} />
-                        <span>Logout</span>
+                <div className="sidebar-footer-container">
+                    {/* User profile card */}
+                    <div 
+                        className="user-profile-card"
+                        onClick={() => { navigate('/settings'); setMobileMenuOpen(false); }}
+                        title="Open Settings"
+                    >
+                        <div className="user-avatar-pill">
+                            {(user?.full_name?.[0] || 'U').toUpperCase()}
+                        </div>
+                        <div className="user-meta">
+                            <div className="user-name">{user?.full_name || 'User'}</div>
+                            <div className="user-email">{user?.email || 'user@unimind.ai'}</div>
+                        </div>
+                        <ChevronRight size={14} className="user-arrow" />
+                    </div>
+
+                    <button onClick={handleLogout} className="sidebar-logout-btn">
+                        <LogOut size={16} />
+                        <span>Sign Out</span>
                     </button>
                 </div>
             </aside>
 
-            {/* Main Content */}
-            <main className="main-content">
-                <Outlet />
-            </main>
+            {/* Main Application Area */}
+            <div className="main-viewport">
+                {/* Desktop Topbar / Breadcrumbs */}
+                <header className="topbar">
+                    <div className="topbar-breadcrumbs">
+                        <span className="breadcrumb-app">UniMind</span>
+                        <ChevronRight size={14} className="breadcrumb-separator" />
+                        <span className="breadcrumb-current">{currentNav.label}</span>
+                    </div>
+
+                    <div className="topbar-actions">
+                        <div className="system-status-pill">
+                            <span className="status-dot" />
+                            <Zap size={13} className="zap-icon" />
+                            <span>Groq Llama-3 Active</span>
+                        </div>
+                    </div>
+                </header>
+
+                <main className="content-container animate-fade-in">
+                    <Outlet />
+                </main>
+            </div>
 
             <style>{`
-                .layout {
+                .app-layout {
                     display: flex;
                     min-height: 100vh;
                     background: var(--background);
+                    position: relative;
                 }
 
-                /* Mobile Header */
+                /* ─── Mobile Header ─── */
                 .mobile-header {
                     display: none;
                     justify-content: space-between;
                     align-items: center;
-                    padding: 1rem;
-                    background: var(--surface);
+                    padding: 0.85rem 1.25rem;
+                    background: rgba(18, 26, 45, 0.95);
+                    backdrop-filter: blur(16px);
                     border-bottom: 1px solid var(--border);
                     position: fixed;
                     top: 0; left: 0; right: 0;
                     z-index: 50;
                 }
-                .mobile-header .logo {
-                    display: flex; gap: 0.5rem; alignItems: center;
-                    font-weight: bold; font-size: 1.2rem;
-                    color: var(--primary);
+                .brand-logo {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.65rem;
+                    cursor: pointer;
+                }
+                .brand-icon {
+                    width: 38px;
+                    height: 38px;
+                    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+                    border-radius: 10px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+                }
+                .brand-name {
+                    font-size: 1.25rem;
+                    font-weight: 800;
+                    letter-spacing: -0.02em;
+                    background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                }
+                .mobile-toggle-btn {
+                    background: var(--surface-2);
+                    border: 1px solid var(--border);
+                    color: var(--text-primary);
+                    padding: 0.4rem;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .mobile-backdrop {
+                    position: fixed;
+                    inset: 0;
+                    background: rgba(0, 0, 0, 0.65);
+                    backdrop-filter: blur(4px);
+                    z-index: 45;
                 }
 
-                /* Sidebar */
-                .sidebar {
+                /* ─── Sidebar ─── */
+                .sidebar-container {
                     width: 260px;
-                    background: var(--surface);
+                    background: rgba(13, 19, 34, 0.85);
+                    backdrop-filter: blur(20px);
+                    -webkit-backdrop-filter: blur(20px);
                     border-right: 1px solid var(--border);
                     display: flex;
                     flex-direction: column;
-                    padding: 1.5rem;
+                    padding: 1.25rem 1rem;
                     height: 100vh;
                     position: sticky;
                     top: 0;
                     flex-shrink: 0;
-                    transition: transform 0.3s ease;
-                    z-index: 40;
+                    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+                    z-index: 48;
                 }
 
                 .sidebar-header {
                     display: flex;
                     align-items: center;
-                    gap: 0.8rem;
-                    margin-bottom: 2rem;
-                    padding-left: 0.5rem;
+                    gap: 0.75rem;
+                    padding: 0.4rem 0.5rem 1.5rem;
+                    cursor: pointer;
+                    user-select: none;
                 }
-                .logo-icon {
-                    width: 36px; height: 36px;
-                    background: linear-gradient(135deg, var(--primary), var(--secondary));
-                    border-radius: 8px;
-                    display: flex; align-items: center; justify-content: center;
-                }
-                .logo-text {
-                    font-size: 1.4rem;
-                    font-weight: 800;
-                    background: linear-gradient(135deg, var(--primary), var(--secondary));
-                    -webkit-background-clip: text;
-                    -webkit-text-fill-color: transparent;
-                }
-
-                .sidebar-nav {
+                .brand-info {
                     display: flex;
                     flex-direction: column;
-                    gap: 0.5rem;
+                }
+                .brand-title {
+                    font-size: 1.2rem;
+                    font-weight: 800;
+                    letter-spacing: -0.02em;
+                    color: #ffffff;
+                    line-height: 1.2;
+                }
+                .brand-subtitle {
+                    font-size: 0.68rem;
+                    color: var(--text-muted);
+                    font-weight: 600;
+                    letter-spacing: 0.04em;
+                    text-transform: uppercase;
+                }
+
+                .nav-section-label {
+                    font-size: 0.68rem;
+                    font-weight: 700;
+                    color: var(--text-muted);
+                    letter-spacing: 0.08em;
+                    padding: 0 0.75rem 0.6rem;
+                }
+
+                .sidebar-nav-list {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.3rem;
                     flex: 1;
                 }
 
-                .nav-item {
+                .nav-link {
                     display: flex;
                     align-items: center;
-                    gap: 0.8rem;
-                    padding: 0.8rem 1rem;
-                    border-radius: 12px;
+                    gap: 0.75rem;
+                    padding: 0.65rem 0.85rem;
+                    border-radius: 10px;
                     color: var(--text-secondary);
                     text-decoration: none;
+                    font-size: 0.88rem;
                     font-weight: 500;
-                    transition: all 0.2s;
+                    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+                    position: relative;
                 }
-                .nav-item:hover {
-                    background: var(--surface-2);
+                .nav-link:hover {
+                    background: rgba(255, 255, 255, 0.04);
                     color: var(--text-primary);
-                    transform: translateX(4px);
+                    transform: translateX(2px);
                 }
-                .nav-item.active {
-                    background: linear-gradient(90deg, rgba(99,102,241,0.1), transparent);
-                    color: var(--primary);
-                    border-left: 3px solid var(--primary);
+                .nav-link.active {
+                    background: rgba(99, 102, 241, 0.12);
+                    color: #ffffff;
+                    font-weight: 600;
+                    border: 1px solid rgba(99, 102, 241, 0.25);
+                }
+                .nav-link.active .nav-icon {
+                    color: var(--primary-light);
+                }
+                .nav-icon {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: var(--text-muted);
+                    transition: color 0.2s;
+                }
+                .nav-label {
+                    flex: 1;
+                }
+                .nav-badge {
+                    font-size: 0.65rem;
+                    font-weight: 700;
+                    padding: 0.15rem 0.45rem;
+                    border-radius: 6px;
+                    background: rgba(99, 102, 241, 0.2);
+                    color: var(--primary-light);
+                    letter-spacing: 0.04em;
+                }
+                .active-indicator {
+                    width: 3px;
+                    height: 16px;
+                    background: var(--primary);
+                    border-radius: 4px;
+                    position: absolute;
+                    left: 2px;
                 }
 
-                .sidebar-footer {
+                /* ─── Footer ─── */
+                .sidebar-footer-container {
                     margin-top: auto;
                     padding-top: 1rem;
                     border-top: 1px solid var(--border);
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.6rem;
                 }
-                .logout-btn {
+
+                .user-profile-card {
                     display: flex;
                     align-items: center;
-                    gap: 0.8rem;
-                    width: 100%;
-                    padding: 0.8rem 1rem;
-                    background: none;
-                    border: none;
-                    color: var(--text-secondary);
+                    gap: 0.65rem;
+                    padding: 0.55rem 0.65rem;
+                    background: rgba(255, 255, 255, 0.03);
+                    border: 1px solid var(--border);
+                    border-radius: 10px;
                     cursor: pointer;
-                    border-radius: 12px;
-                    font-size: 0.95rem;
                     transition: all 0.2s;
                 }
-                .logout-btn:hover {
-                    background: rgba(239, 68, 68, 0.1);
-                    color: var(--error);
+                .user-profile-card:hover {
+                    background: rgba(255, 255, 255, 0.06);
+                    border-color: rgba(255, 255, 255, 0.15);
                 }
-
-                /* Main Content Area */
-                .main-content {
+                .user-avatar-pill {
+                    width: 32px;
+                    height: 32px;
+                    border-radius: 50%;
+                    background: linear-gradient(135deg, #6366f1, #0ea5e9);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 0.85rem;
+                    font-weight: 700;
+                    color: #ffffff;
+                    flex-shrink: 0;
+                    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+                }
+                .user-meta {
+                    min-width: 0;
                     flex: 1;
-                    padding: 2rem;
-                    max-width: 1400px;
-                    margin: 0 auto;
-                    width: 100%;
+                }
+                .user-name {
+                    font-size: 0.82rem;
+                    font-weight: 600;
+                    color: var(--text-primary);
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                    line-height: 1.2;
+                }
+                .user-email {
+                    font-size: 0.7rem;
+                    color: var(--text-muted);
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+                .user-arrow {
+                    color: var(--text-muted);
                 }
 
-                /* Responsive */
-                @media (max-width: 768px) {
-                    .mobile-header { display: flex; }
-                    .sidebar {
-                        position: fixed;
-                        transform: translateX(-100%);
-                        box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+                .sidebar-logout-btn {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 0.5rem;
+                    width: 100%;
+                    padding: 0.55rem;
+                    background: transparent;
+                    border: 1px solid transparent;
+                    color: var(--text-muted);
+                    cursor: pointer;
+                    border-radius: 8px;
+                    font-size: 0.82rem;
+                    font-weight: 500;
+                    font-family: inherit;
+                    transition: all 0.2s;
+                }
+                .sidebar-logout-btn:hover {
+                    background: rgba(244, 63, 94, 0.1);
+                    color: var(--error);
+                    border-color: rgba(244, 63, 94, 0.2);
+                }
+
+                /* ─── Main Viewport ─── */
+                .main-viewport {
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    min-width: 0;
+                }
+
+                .topbar {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 1rem 2.5rem;
+                    border-bottom: 1px solid var(--border);
+                    background: rgba(9, 13, 22, 0.6);
+                    backdrop-filter: blur(12px);
+                    position: sticky;
+                    top: 0;
+                    z-index: 30;
+                }
+                .topbar-breadcrumbs {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    font-size: 0.85rem;
+                }
+                .breadcrumb-app {
+                    color: var(--text-muted);
+                    font-weight: 500;
+                }
+                .breadcrumb-separator {
+                    color: var(--text-muted);
+                    opacity: 0.6;
+                }
+                .breadcrumb-current {
+                    color: var(--text-primary);
+                    font-weight: 600;
+                }
+
+                .topbar-actions {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.75rem;
+                }
+                .system-status-pill {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.45rem;
+                    padding: 0.3rem 0.75rem;
+                    background: rgba(16, 185, 129, 0.08);
+                    border: 1px solid rgba(16, 185, 129, 0.25);
+                    border-radius: var(--radius-full);
+                    font-size: 0.76rem;
+                    font-weight: 600;
+                    color: var(--success);
+                }
+                .status-dot {
+                    width: 6px;
+                    height: 6px;
+                    border-radius: 50%;
+                    background: var(--success);
+                    box-shadow: 0 0 8px var(--success);
+                    animation: pulseGlow 2s infinite;
+                }
+                .zap-icon {
+                    color: var(--warning);
+                }
+
+                .content-container {
+                    flex: 1;
+                    padding: 2rem 2.5rem;
+                    max-width: 1400px;
+                    width: 100%;
+                    margin: 0 auto;
+                }
+
+                /* ─── Responsive ─── */
+                @media (max-width: 900px) {
+                    .mobile-header {
+                        display: flex;
                     }
-                    .sidebar.open {
+                    .topbar {
+                        display: none;
+                    }
+                    .sidebar-container {
+                        position: fixed;
+                        top: 0; bottom: 0; left: 0;
+                        transform: translateX(-100%);
+                        z-index: 50;
+                    }
+                    .sidebar-container.mobile-open {
                         transform: translateX(0);
                     }
-                    .main-content {
-                        padding: 1rem;
-                        padding-top: 5rem; /* Space for mobile header */
+                    .content-container {
+                        padding: 1.25rem;
+                        padding-top: 5rem;
                     }
                 }
             `}</style>

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -10,6 +11,7 @@ import Chat from './pages/Chat';
 import QuizPage from './pages/Quiz';
 import Sentiment from './pages/Sentiment';
 import Speech from './pages/Speech';
+import Settings from './pages/Settings';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -73,6 +75,7 @@ function AppRoutes() {
         <Route path="/quiz" element={<QuizPage />} />
         <Route path="/sentiment" element={<Sentiment />} />
         <Route path="/speech" element={<Speech />} />
+        <Route path="/settings" element={<Settings />} />
       </Route>
 
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -86,7 +89,9 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          <AppRoutes />
+          <ToastProvider>
+            <AppRoutes />
+          </ToastProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
