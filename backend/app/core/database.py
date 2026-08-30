@@ -19,6 +19,7 @@ async def init_db():
     from app.models.conversation import Conversation, Message
     from app.models.quiz import Quiz, Question
     from app.models.quiz_attempt import QuizAttempt
+    from app.models.flashcard import FlashcardDeck
 
     try:
         db_client = AsyncIOMotorClient(
@@ -39,6 +40,7 @@ async def init_db():
                 Quiz,
                 Question,
                 QuizAttempt,
+                FlashcardDeck,
             ],
         )
         print(f"[DB] Connected to MongoDB: {settings.DATABASE_NAME}")

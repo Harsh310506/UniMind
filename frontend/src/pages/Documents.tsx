@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { documentsAPI, analysisAPI } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import type { DocumentItem } from '../types';
+import MindMapModal from '../components/MindMapModal';
 
 import {
     Upload,
@@ -15,7 +16,13 @@ import {
     Copy,
     Layers,
     FileCheck,
-    Check
+    Check,
+    Globe,
+    Scale,
+    Link as LinkIcon,
+    GitBranch,
+    FileText,
+    ListChecks
 } from 'lucide-react';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
@@ -29,6 +36,8 @@ const FILE_CONFIG: Record<string, { icon: string; color: string; bg: string }> =
     DOCX: { icon: '📝', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.12)' },
     TXT: { icon: '📃', color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)' },
     IMAGE: { icon: '🖼️', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.12)' },
+    WEB: { icon: '🌐', color: '#0ea5e9', bg: 'rgba(14, 165, 233, 0.12)' },
+    YOUTUBE: { icon: '🎥', color: '#f43f5e', bg: 'rgba(244, 63, 94, 0.12)' },
 };
 
 export default function Documents() {
@@ -42,9 +51,20 @@ export default function Documents() {
     const [typeFilter, setTypeFilter] = useState<string>('ALL');
     const [isDragging, setIsDragging] = useState(false);
 
+    // Ingest URL modal
+    const [showUrlModal, setShowUrlModal] = useState(false);
+    const [ingestUrlInput, setIngestUrlInput] = useState('');
+    const [ingestTitleInput, setIngestTitleInput] = useState('');
+    const [ingestingUrl, setIngestingUrl] = useState(false);
+
+    // Mind Map modal
+    const [mindMapModalDoc, setMindMapModalDoc] = useState<DocumentItem | null>(null);
+    const [mindMapData, setMindMapData] = useState<any>(null);
+    const [loadingMindMap, setLoadingMindMap] = useState(false);
+
     // Summary modal
     const [summaryModalDoc, setSummaryModalDoc] = useState<DocumentItem | null>(null);
-    const [summaryContent, setSummaryContent] = useState<string>('');
+    const [summaryContent, setSummaryContent] = useState<any>(null);
     const [summarizing, setSummarizing] = useState(false);
     const [copiedSummary, setCopiedSummary] = useState(false);
 
@@ -80,6 +100,40 @@ export default function Documents() {
         } finally {
             setUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const handleIngestUrl = async () => {
+        if (!ingestUrlInput.trim()) {
+            toast.warning('URL required', 'Please enter a valid website or YouTube URL.');
+            return;
+        }
+        setIngestingUrl(true);
+        try {
+            const { data } = await documentsAPI.ingestUrl(ingestUrlInput.trim(), ingestTitleInput.trim() || undefined);
+            toast.success('Ingestion complete!', `${data.document.filename} indexed and ready.`);
+            setShowUrlModal(false);
+            setIngestUrlInput('');
+            setIngestTitleInput('');
+            fetchDocuments();
+        } catch (err: any) {
+            toast.error('Ingestion failed', err.response?.data?.detail || 'Could not fetch web or video content');
+        } finally {
+            setIngestingUrl(false);
+        }
+    };
+
+    const handleOpenMindMap = async (doc: DocumentItem) => {
+        setMindMapModalDoc(doc);
+        setLoadingMindMap(true);
+        setMindMapData(null);
+        try {
+            const { data } = await analysisAPI.getMindMap(doc.doc_id);
+            setMindMapData(data.mindmap);
+        } catch (err: any) {
+            toast.error('Mind Map failed', err.response?.data?.detail);
+        } finally {
+            setLoadingMindMap(false);
         }
     };
 
@@ -150,12 +204,27 @@ export default function Documents() {
     };
 
     const handleCopySummary = () => {
-        if (summaryContent) {
-            navigator.clipboard.writeText(summaryContent);
-            setCopiedSummary(true);
-            toast.success('Summary copied to clipboard');
-            setTimeout(() => setCopiedSummary(false), 2000);
+        if (!summaryContent) return;
+        let textToCopy = '';
+        if (typeof summaryContent === 'string') {
+            textToCopy = summaryContent;
+        } else {
+            const parts: string[] = [];
+            if (summaryContent.executive_summary) {
+                parts.push(`EXECUTIVE SUMMARY:\n${summaryContent.executive_summary}`);
+            }
+            if (summaryContent.key_points && summaryContent.key_points.length > 0) {
+                parts.push(`KEY TAKEAWAYS:\n${summaryContent.key_points.map((p: string) => `• ${p}`).join('\n')}`);
+            }
+            if (summaryContent.detailed_summary) {
+                parts.push(`DETAILED ANALYSIS:\n${summaryContent.detailed_summary}`);
+            }
+            textToCopy = parts.join('\n\n');
         }
+        navigator.clipboard.writeText(textToCopy);
+        setCopiedSummary(true);
+        toast.success('Summary copied to clipboard');
+        setTimeout(() => setCopiedSummary(false), 2000);
     };
 
     const formatFileSize = (bytes: number) => {
@@ -171,7 +240,7 @@ export default function Documents() {
         return matchesSearch && matchesType;
     });
 
-    const filterTypes = ['ALL', 'PDF', 'DOCX', 'TXT', 'IMAGE'];
+    const filterTypes = ['ALL', 'PDF', 'DOCX', 'TXT', 'IMAGE', 'WEB', 'YOUTUBE'];
 
     return (
         <div className="documents-container animate-slide-up">
@@ -180,12 +249,18 @@ export default function Documents() {
                 <div>
                     <h1 className="page-title">Document Knowledge Base</h1>
                     <p className="page-subtitle">
-                        Upload documents to power RAG chat conversations, interactive quizzes, and semantic retrieval.
+                        Upload files or ingest web articles & YouTube transcripts to power RAG chat, flashcards, mind maps, and quizzes.
                     </p>
                 </div>
-                <div className="header-badge">
-                    <Layers size={15} color="var(--primary-light)" />
-                    <span>{documents.length} Document{documents.length !== 1 ? 's' : ''} Stored</span>
+                <div className="header-action-shortcuts">
+                    <button className="btn-secondary" onClick={() => navigate('/compare')}>
+                        <Scale size={15} />
+                        <span>Compare 2+ Docs</span>
+                    </button>
+                    <button className="btn-primary" onClick={() => setShowUrlModal(true)}>
+                        <LinkIcon size={15} />
+                        <span>Ingest Web / YouTube</span>
+                    </button>
                 </div>
             </div>
 
@@ -221,12 +296,12 @@ export default function Documents() {
                         <span className="upload-primary-text">
                             {uploading ? uploadProgress : (
                                 <>
-                                    <strong>Click to upload</strong> or drag and drop files here
+                                    <strong>Click to upload files</strong> or drag and drop here
                                 </>
                             )}
                         </span>
                         <span className="upload-subtext">
-                            Supported: PDF, DOCX, TXT, JPG, PNG (with OCR text extraction) • Up to 25MB
+                            Supports PDF, DOCX, TXT, OCR Images (or use the button above for YouTube transcripts & Web URLs)
                         </span>
                     </div>
 
@@ -235,6 +310,8 @@ export default function Documents() {
                         <span className="format-pill">DOCX</span>
                         <span className="format-pill">TXT</span>
                         <span className="format-pill">OCR Images</span>
+                        <span className="format-pill">Web URL</span>
+                        <span className="format-pill">YouTube</span>
                     </div>
                 </div>
             </div>
@@ -292,7 +369,7 @@ export default function Documents() {
                     <p>
                         {searchQuery || typeFilter !== 'ALL'
                             ? 'No files matched your current search and filter settings.'
-                            : 'Upload your first document above to enable RAG chat, quizzes, and text analysis.'}
+                            : 'Upload a document or ingest a web article/YouTube video to get started.'}
                     </p>
                     {(searchQuery || typeFilter !== 'ALL') && (
                         <button className="btn-secondary" onClick={() => { setSearchQuery(''); setTypeFilter('ALL'); }}>
@@ -355,8 +432,26 @@ export default function Documents() {
                                                 onClick={() => navigate(`/chat?doc=${doc.doc_id}`)}
                                                 title="Chat with this document"
                                             >
-                                                <MessageSquare size={14} />
+                                                <MessageSquare size={13} />
                                                 <span>Chat</span>
+                                            </button>
+
+                                            <button
+                                                className="action-btn flashcards-action"
+                                                onClick={() => navigate(`/flashcards?doc=${doc.doc_id}`)}
+                                                title="Generate AI Flashcards"
+                                            >
+                                                <Layers size={13} />
+                                                <span>Cards</span>
+                                            </button>
+
+                                            <button
+                                                className="action-btn mindmap-action"
+                                                onClick={() => handleOpenMindMap(doc)}
+                                                title="Interactive Concept Mind Map"
+                                            >
+                                                <GitBranch size={13} />
+                                                <span>Mind Map</span>
                                             </button>
 
                                             <button
@@ -364,7 +459,7 @@ export default function Documents() {
                                                 onClick={() => navigate(`/quiz?doc=${doc.doc_id}`)}
                                                 title="Generate quiz from this document"
                                             >
-                                                <Sparkles size={14} />
+                                                <Sparkles size={13} />
                                                 <span>Quiz</span>
                                             </button>
 
@@ -373,7 +468,7 @@ export default function Documents() {
                                                 onClick={() => handleOpenSummary(doc)}
                                                 title="Generate AI Summary"
                                             >
-                                                <FileCheck size={14} />
+                                                <FileCheck size={13} />
                                                 <span>Summary</span>
                                             </button>
                                         </>
@@ -384,7 +479,7 @@ export default function Documents() {
                                         onClick={() => handleDownload(doc.doc_id, doc.filename)}
                                         title="Download original file"
                                     >
-                                        <Download size={15} />
+                                        <Download size={14} />
                                     </button>
 
                                     <button
@@ -392,13 +487,89 @@ export default function Documents() {
                                         onClick={() => handleDelete(doc.doc_id, doc.filename)}
                                         title="Delete document"
                                     >
-                                        <Trash2 size={15} />
+                                        <Trash2 size={14} />
                                     </button>
                                 </div>
                             </div>
                         );
                     })}
                 </div>
+            )}
+
+            {/* Ingest URL / YouTube Modal */}
+            {showUrlModal && (
+                <div className="modal-backdrop" onClick={() => setShowUrlModal(false)}>
+                    <div className="url-modal glass-panel animate-slide-up" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <div className="modal-title-group">
+                                <div className="modal-icon-badge" style={{ background: 'rgba(14, 165, 233, 0.15)' }}>
+                                    <Globe size={18} color="#0ea5e9" />
+                                </div>
+                                <div>
+                                    <h3>Ingest Web URL or YouTube Video</h3>
+                                    <span className="modal-sub">Scrape articles or extract YouTube transcripts directly</span>
+                                </div>
+                            </div>
+                            <button className="modal-close-btn" onClick={() => setShowUrlModal(false)}>
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="modal-body">
+                            <div className="form-group" style={{ marginBottom: '1.2rem' }}>
+                                <label className="field-label">Target URL</label>
+                                <input
+                                    type="url"
+                                    placeholder="https://en.wikipedia.org/... or https://youtube.com/watch?v=..."
+                                    value={ingestUrlInput}
+                                    onChange={e => setIngestUrlInput(e.target.value)}
+                                    className="input-field"
+                                    autoFocus
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label className="field-label">Custom Document Title (Optional)</label>
+                                <input
+                                    type="text"
+                                    placeholder="Leave blank to auto-detect from web page or video title"
+                                    value={ingestTitleInput}
+                                    onChange={e => setIngestTitleInput(e.target.value)}
+                                    className="input-field"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="modal-footer">
+                            <button className="btn-secondary" onClick={() => setShowUrlModal(false)}>
+                                Cancel
+                            </button>
+                            <button className="btn-primary" onClick={handleIngestUrl} disabled={ingestingUrl || !ingestUrlInput.trim()}>
+                                {ingestingUrl ? (
+                                    <>
+                                        <div className="spinner" style={{ width: 16, height: 16 }} />
+                                        <span>Fetching & Indexing...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Sparkles size={16} />
+                                        <span>Fetch & Ingest</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Mind Map Modal */}
+            {mindMapModalDoc && (
+                <MindMapModal
+                    docName={mindMapModalDoc.filename}
+                    data={mindMapData}
+                    loading={loadingMindMap}
+                    onClose={() => setMindMapModalDoc(null)}
+                />
             )}
 
             {/* AI Summary Modal */}
@@ -426,9 +597,52 @@ export default function Documents() {
                                     <div className="spinner" style={{ width: 32, height: 32, borderWidth: 3, margin: '0 auto 1rem' }} />
                                     <p>Analyzing document & generating summary with Groq 70B...</p>
                                 </div>
-                            ) : (
+                            ) : !summaryContent ? (
+                                <div className="summary-text-box">
+                                    <p>No summary available.</p>
+                                </div>
+                            ) : typeof summaryContent === 'string' ? (
                                 <div className="summary-text-box">
                                     <p>{summaryContent}</p>
+                                </div>
+                            ) : (
+                                <div className="structured-summary-box">
+                                    {summaryContent.executive_summary && (
+                                        <div className="summary-section executive-summary-card">
+                                            <div className="summary-section-header">
+                                                <Sparkles size={16} color="var(--primary-light)" />
+                                                <h4>Executive Summary</h4>
+                                            </div>
+                                            <p className="summary-p">{summaryContent.executive_summary}</p>
+                                        </div>
+                                    )}
+
+                                    {summaryContent.key_points && summaryContent.key_points.length > 0 && (
+                                        <div className="summary-section key-points-card">
+                                            <div className="summary-section-header">
+                                                <ListChecks size={16} color="var(--success)" />
+                                                <h4>Key Takeaways</h4>
+                                            </div>
+                                            <ul className="summary-points-list">
+                                                {summaryContent.key_points.map((pt: string, idx: number) => (
+                                                    <li key={idx} className="summary-point-item">
+                                                        <span className="point-bullet" />
+                                                        <span>{pt}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+
+                                    {summaryContent.detailed_summary && (
+                                        <div className="summary-section detailed-summary-card">
+                                            <div className="summary-section-header">
+                                                <FileText size={16} color="var(--primary-light)" />
+                                                <h4>Detailed Breakdown</h4>
+                                            </div>
+                                            <p className="summary-p detailed-text">{summaryContent.detailed_summary}</p>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -476,17 +690,10 @@ export default function Documents() {
                     font-size: 0.92rem;
                     max-width: 650px;
                 }
-                .header-badge {
+                .header-action-shortcuts {
                     display: flex;
                     align-items: center;
-                    gap: 0.5rem;
-                    padding: 0.4rem 0.85rem;
-                    background: rgba(99, 102, 241, 0.1);
-                    border: 1px solid rgba(99, 102, 241, 0.25);
-                    border-radius: var(--radius-full);
-                    font-size: 0.8rem;
-                    font-weight: 600;
-                    color: var(--primary-light);
+                    gap: 0.75rem;
                 }
 
                 /* ─── Dropzone ─── */
@@ -550,6 +757,8 @@ export default function Documents() {
                     display: flex;
                     gap: 0.45rem;
                     margin-top: 0.4rem;
+                    flex-wrap: wrap;
+                    justify-content: center;
                 }
                 .format-pill {
                     font-size: 0.72rem;
@@ -611,6 +820,7 @@ export default function Documents() {
                 .filter-chips-group {
                     display: flex;
                     gap: 0.4rem;
+                    flex-wrap: wrap;
                 }
                 .filter-chip {
                     padding: 0.5rem 0.9rem;
@@ -714,20 +924,21 @@ export default function Documents() {
                 .doc-card-actions {
                     display: flex;
                     align-items: center;
-                    gap: 0.45rem;
+                    gap: 0.35rem;
                     padding-top: 0.9rem;
                     border-top: 1px solid var(--border-subtle);
+                    flex-wrap: wrap;
                 }
                 .action-btn {
                     display: inline-flex;
                     align-items: center;
-                    gap: 0.35rem;
-                    padding: 0.45rem 0.75rem;
-                    border-radius: 8px;
+                    gap: 0.3rem;
+                    padding: 0.35rem 0.6rem;
+                    border-radius: 6px;
                     border: 1px solid var(--border);
                     background: var(--surface-2);
                     color: var(--text-primary);
-                    font-size: 0.78rem;
+                    font-size: 0.74rem;
                     font-weight: 600;
                     cursor: pointer;
                     transition: all 0.15s;
@@ -738,24 +949,18 @@ export default function Documents() {
                     border-color: rgba(255, 255, 255, 0.2);
                     transform: translateY(-1px);
                 }
-                .chat-action:hover {
-                    color: #0ea5e9;
-                    border-color: rgba(14, 165, 233, 0.4);
-                }
-                .quiz-action:hover {
-                    color: #f59e0b;
-                    border-color: rgba(245, 158, 11, 0.4);
-                }
-                .summary-action:hover {
-                    color: #8b5cf6;
-                    border-color: rgba(139, 92, 246, 0.4);
-                }
+                .chat-action:hover { color: #0ea5e9; border-color: rgba(14, 165, 233, 0.4); }
+                .flashcards-action:hover { color: #8b5cf6; border-color: rgba(139, 92, 246, 0.4); }
+                .mindmap-action:hover { color: #10b981; border-color: rgba(16, 185, 129, 0.4); }
+                .quiz-action:hover { color: #f59e0b; border-color: rgba(245, 158, 11, 0.4); }
+                .summary-action:hover { color: #ec4899; border-color: rgba(236, 72, 153, 0.4); }
+                
                 .icon-action-btn {
-                    padding: 0.45rem;
+                    padding: 0.4rem;
                     background: var(--surface-2);
                     border: 1px solid var(--border);
                     color: var(--text-secondary);
-                    border-radius: 8px;
+                    border-radius: 6px;
                     cursor: pointer;
                     display: flex;
                     align-items: center;
@@ -776,13 +981,8 @@ export default function Documents() {
                     border-color: rgba(244, 63, 94, 0.3);
                 }
 
-                .doc-card-skeleton {
-                    padding: 1.4rem;
-                }
-                .skeleton-header {
-                    display: flex;
-                    justify-content: space-between;
-                }
+                .doc-card-skeleton { padding: 1.4rem; }
+                .skeleton-header { display: flex; justify-content: space-between; }
                 .empty-docs-state {
                     padding: 3.5rem 2rem;
                     text-align: center;
@@ -791,12 +991,9 @@ export default function Documents() {
                     align-items: center;
                     gap: 0.6rem;
                 }
-                .empty-state-icon {
-                    font-size: 3rem;
-                    margin-bottom: 0.4rem;
-                }
+                .empty-state-icon { font-size: 3rem; margin-bottom: 0.4rem; }
 
-                /* ─── Modal ─── */
+                /* ─── Modals ─── */
                 .modal-backdrop {
                     position: fixed;
                     inset: 0;
@@ -808,9 +1005,9 @@ export default function Documents() {
                     z-index: 100;
                     padding: 1.5rem;
                 }
-                .summary-modal {
+                .url-modal, .summary-modal {
                     width: 100%;
-                    max-width: 620px;
+                    max-width: 580px;
                     border: 1px solid rgba(99, 102, 241, 0.3);
                     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
                     border-radius: var(--radius-lg);
@@ -834,17 +1031,16 @@ export default function Documents() {
                     width: 36px;
                     height: 36px;
                     border-radius: 10px;
-                    background: rgba(99, 102, 241, 0.15);
                     display: flex;
                     align-items: center;
                     justify-content: center;
                 }
                 .modal-header h3 {
-                    font-size: 1.1rem;
+                    font-size: 1.05rem;
                     font-weight: 700;
                     color: #ffffff;
                 }
-                .modal-doc-name {
+                .modal-sub, .modal-doc-name {
                     font-size: 0.76rem;
                     color: var(--text-muted);
                 }
@@ -879,6 +1075,73 @@ export default function Documents() {
                     color: var(--text-primary);
                     white-space: pre-wrap;
                     border: 1px solid var(--border);
+                }
+                .structured-summary-box {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1.15rem;
+                }
+                .summary-section {
+                    background: rgba(18, 26, 45, 0.7);
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: var(--radius);
+                    padding: 1.15rem;
+                }
+                .executive-summary-card {
+                    border-left: 3px solid var(--primary-light);
+                    background: rgba(99, 102, 241, 0.08);
+                }
+                .key-points-card {
+                    border-left: 3px solid var(--success);
+                }
+                .detailed-summary-card {
+                    border-left: 3px solid rgba(255, 255, 255, 0.2);
+                }
+                .summary-section-header {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    margin-bottom: 0.65rem;
+                }
+                .summary-section-header h4 {
+                    font-size: 0.88rem;
+                    font-weight: 700;
+                    color: #ffffff;
+                    text-transform: uppercase;
+                    letter-spacing: 0.04em;
+                }
+                .summary-p {
+                    font-size: 0.9rem;
+                    line-height: 1.65;
+                    color: var(--text-secondary);
+                    margin: 0;
+                }
+                .detailed-text {
+                    white-space: pre-wrap;
+                }
+                .summary-points-list {
+                    list-style: none;
+                    padding: 0;
+                    margin: 0;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.6rem;
+                }
+                .summary-point-item {
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 0.6rem;
+                    font-size: 0.88rem;
+                    line-height: 1.5;
+                    color: var(--text-primary);
+                }
+                .point-bullet {
+                    width: 6px;
+                    height: 6px;
+                    border-radius: 50%;
+                    background: var(--success);
+                    margin-top: 0.45rem;
+                    flex-shrink: 0;
                 }
                 .modal-footer {
                     display: flex;

@@ -103,6 +103,51 @@ async def chat_completion(
         raise Exception(f"LLM service error: {str(e)}")
 
 
+async def call_groq_llm(
+    prompt: str,
+    system_prompt: Optional[str] = None,
+    temperature: float = 0.7,
+    max_tokens: int = 2048,
+    json_mode: bool = False,
+    model: Optional[str] = None,
+) -> str:
+    """Universal helper to call Groq LLM with system and user prompts"""
+    client = get_groq_client()
+    target_model = model or "qwen/qwen3.8-27b"
+
+    messages = []
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+    messages.append({"role": "user", "content": prompt})
+
+    try:
+        kwargs = {
+            "model": target_model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        if json_mode:
+            kwargs["response_format"] = {"type": "json_object"}
+
+        response = client.chat.completions.create(**kwargs)
+        return response.choices[0].message.content
+    except Exception as e:
+        # Fallback without json_mode if model doesn't support response_format
+        if json_mode:
+            try:
+                response = client.chat.completions.create(
+                    model=target_model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                )
+                return response.choices[0].message.content
+            except Exception as inner_e:
+                raise Exception(f"Groq API error: {str(inner_e)}")
+        raise Exception(f"Groq API error: {str(e)}")
+
+
 async def rag_chat(
     query: str,
     context: str,

@@ -9,6 +9,8 @@ import Dashboard from './pages/Dashboard';
 import Documents from './pages/Documents';
 import Chat from './pages/Chat';
 import QuizPage from './pages/Quiz';
+import Flashcards from './pages/Flashcards';
+import Compare from './pages/Compare';
 import Sentiment from './pages/Sentiment';
 import Speech from './pages/Speech';
 import Settings from './pages/Settings';
@@ -72,7 +74,9 @@ function AppRoutes() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/documents" element={<Documents />} />
         <Route path="/chat" element={<Chat />} />
+        <Route path="/flashcards" element={<Flashcards />} />
         <Route path="/quiz" element={<QuizPage />} />
+        <Route path="/compare" element={<Compare />} />
         <Route path="/sentiment" element={<Sentiment />} />
         <Route path="/speech" element={<Speech />} />
         <Route path="/settings" element={<Settings />} />

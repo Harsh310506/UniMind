@@ -7,13 +7,12 @@ import {
   MessageSquare,
   Upload,
   BarChart3,
-  Mic,
   Sparkles,
   Clock,
   ChevronRight,
   ArrowUpRight,
-  FileCheck,
-  Zap,
+  Layers,
+  Scale,
 } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
@@ -23,6 +22,7 @@ const Dashboard: React.FC = () => {
     documents: 0,
     conversations: 0,
     quizzes: 0,
+    flashcards: 0,
     analysis: 0,
     recent_documents: [] as any[],
     recent_conversations: [] as any[],
@@ -71,6 +71,15 @@ const Dashboard: React.FC = () => {
       path: '/chat',
     },
     {
+      label: 'Flashcard Decks',
+      value: stats.flashcards,
+      subtext: 'Spaced repetition SM-2',
+      icon: <Layers size={22} />,
+      color: '#8b5cf6',
+      glow: 'rgba(139, 92, 246, 0.15)',
+      path: '/flashcards',
+    },
+    {
       label: 'Quizzes Created',
       value: stats.quizzes,
       subtext: 'Auto-assessed MCQs',
@@ -79,33 +88,40 @@ const Dashboard: React.FC = () => {
       glow: 'rgba(245, 158, 11, 0.15)',
       path: '/quiz',
     },
-    {
-      label: 'Processed & Ready',
-      value: stats.analysis,
-      subtext: 'Embedding completed',
-      icon: <FileCheck size={22} />,
-      color: '#10b981',
-      glow: 'rgba(16, 185, 129, 0.15)',
-      path: '/documents',
-    },
   ];
 
   const quickActions = [
     {
       icon: <Upload size={22} />,
-      title: 'Upload Document',
-      description: 'Upload PDF, DOCX, TXT, or scan images with OCR',
+      title: 'Upload / Ingest URL',
+      description: 'PDF, DOCX, TXT, OCR Images, Web Articles & YouTube',
       color: '#6366f1',
-      badge: 'Fast OCR',
+      badge: 'Web & Video',
       path: '/documents',
     },
     {
       icon: <MessageSquare size={22} />,
       title: 'Ask AI Documents',
-      description: 'Query multiple documents with source page citations',
+      description: 'Query multiple documents with grounded citations',
       color: '#0ea5e9',
       badge: 'Hybrid RAG',
       path: '/chat',
+    },
+    {
+      icon: <Layers size={22} />,
+      title: 'AI Flashcards',
+      description: 'Active recall & spaced repetition flashcard decks',
+      color: '#8b5cf6',
+      badge: 'SM-2 Anki',
+      path: '/flashcards',
+    },
+    {
+      icon: <Scale size={22} />,
+      title: 'Compare 2+ Docs',
+      description: 'Side-by-side synthesis matrix & difference analysis',
+      color: '#ec4899',
+      badge: 'Synthesis',
+      path: '/compare',
     },
     {
       icon: <Sparkles size={22} />,
@@ -122,22 +138,6 @@ const Dashboard: React.FC = () => {
       color: '#10b981',
       badge: 'Fast',
       path: '/sentiment',
-    },
-    {
-      icon: <Mic size={22} />,
-      title: 'Audio Transcriber',
-      description: 'Whisper-powered speech-to-text with one-click chat pipe',
-      color: '#ec4899',
-      badge: 'Whisper',
-      path: '/speech',
-    },
-    {
-      icon: <Zap size={22} />,
-      title: 'Document Summarizer',
-      description: 'Extract executive summaries & key concepts instantly',
-      color: '#8b5cf6',
-      badge: 'Groq 70B',
-      path: '/documents',
     },
   ];
 

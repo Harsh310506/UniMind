@@ -86,6 +86,21 @@ def extract_text_from_image(file_path: str) -> List[Tuple[int, str]]:
     """Extract text from image using OCR (Tesseract)"""
     try:
         import pytesseract
+        import shutil
+
+        # Check standard Windows tesseract paths if not in PATH
+        if not shutil.which("tesseract"):
+            common_paths = [
+                r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+                r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+                os.path.expanduser(r"~\AppData\Local\Programs\Tesseract-OCR\tesseract.exe"),
+                os.path.expanduser(r"~\AppData\Local\Tesseract-OCR\tesseract.exe"),
+            ]
+            for p in common_paths:
+                if os.path.exists(p):
+                    pytesseract.pytesseract.tesseract_cmd = p
+                    break
+
         img = Image.open(file_path)
         # Convert to grayscale for better OCR
         img = img.convert("L")
@@ -94,8 +109,8 @@ def extract_text_from_image(file_path: str) -> List[Tuple[int, str]]:
             return [(1, text)]
     except Exception as e:
         print(f"OCR extraction failed (Tesseract may not be installed): {e}")
-        # Fallback: return a placeholder
-        return [(1, f"[Image file: {os.path.basename(file_path)} - OCR not available]")]
+        # Fallback: return a descriptive placeholder
+        return [(1, f"[Image file: {os.path.basename(file_path)} - OCR not available. Install Tesseract-OCR on your system for image text extraction.]")]
     return []
 
 

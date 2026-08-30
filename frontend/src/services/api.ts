@@ -80,6 +80,9 @@ export const documentsAPI = {
         });
     },
 
+    ingestUrl: (url: string, title?: string) =>
+        api.post('/documents/ingest-url', { url, title }),
+
     list: (params?: { page?: number; page_size?: number; file_type?: string }) =>
         api.get('/documents', { params }),
 
@@ -151,6 +154,37 @@ export const quizAPI = {
         api.delete(`/quiz/${quizId}`),
 };
 
+// ─── Flashcards API ──────────────────────────────────────
+export const flashcardsAPI = {
+    generate: (documentId: string, numCards: number = 10, title?: string) =>
+        api.post('/flashcards/generate', {
+            document_id: documentId,
+            num_cards: numCards,
+            title,
+        }),
+
+    listDecks: () =>
+        api.get('/flashcards/decks'),
+
+    getDeck: (deckId: string) =>
+        api.get(`/flashcards/decks/${deckId}`),
+
+    reviewCard: (deckId: string, cardId: string, rating: number) =>
+        api.post(`/flashcards/decks/${deckId}/review`, {
+            card_id: cardId,
+            rating,
+        }),
+
+    deleteDeck: (deckId: string) =>
+        api.delete(`/flashcards/decks/${deckId}`),
+
+    exportDeck: (deckId: string, format: 'anki' | 'markdown' = 'anki') =>
+        api.get(`/flashcards/decks/${deckId}/export`, {
+            params: { format },
+            responseType: 'blob',
+        }),
+};
+
 // ─── Analysis API ────────────────────────────────────────
 export const analysisAPI = {
     sentiment: (text: string) =>
@@ -166,12 +200,24 @@ export const analysisAPI = {
 
     summarize: (documentId: string) =>
         api.post(`/documents/${documentId}/summarize`),
+
+    getMindMap: (documentId: string) =>
+        api.post(`/analysis/mindmap/${documentId}`),
+
+    compareDocuments: (documentIds: string[], focus?: string) =>
+        api.post('/analysis/compare', {
+            document_ids: documentIds,
+            focus,
+        }),
 };
 
 // ─── Dashboard API ───────────────────────────────────────
 export const dashboardAPI = {
     getStats: () =>
         api.get('/dashboard/stats'),
+
+    globalSearch: (query: string) =>
+        api.get('/dashboard/search', { params: { q: query } }),
 };
 
 export default api;

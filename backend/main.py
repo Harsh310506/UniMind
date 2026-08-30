@@ -18,6 +18,7 @@ from app.api.chat import router as chat_router
 from app.api.quiz import router as quiz_router
 from app.api.analysis import router as analysis_router
 from app.api.dashboard import router as dashboard_router
+from app.api.flashcards import router as flashcards_router
 
 
 @asynccontextmanager
@@ -104,6 +105,7 @@ app.include_router(chat_router)
 app.include_router(quiz_router)
 app.include_router(analysis_router)
 app.include_router(dashboard_router)
+app.include_router(flashcards_router)
 
 
 # --- Health Check ---

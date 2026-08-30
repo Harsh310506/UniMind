@@ -5,6 +5,7 @@ import os
 import uuid
 from datetime import datetime
 from typing import Optional
+from pydantic import BaseModel
 from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File, Query, BackgroundTasks
 from fastapi.responses import FileResponse
 
@@ -351,3 +352,92 @@ async def summarize_document(doc_id: str, current_user: User = Depends(get_curre
         "filename": doc.filename,
         "summary": summary,
     }
+
+
+class IngestUrlRequest(BaseModel):
+    url: str
+    title: Optional[str] = None
+
+
+@router.post("/ingest-url")
+async def ingest_url(
+    req: IngestUrlRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Ingest a web URL (article, blog, docs, or YouTube video transcript)
+    into the user's document knowledge base.
+    """
+    from app.services.url_ingestor import ingest_url_content
+    from app.services.document_processor import chunk_text
+
+    if not req.url or not req.url.strip():
+        raise HTTPException(status_code=400, detail="URL is required")
+
+    try:
+        data = await ingest_url_content(req.url.strip())
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to ingest URL: {str(e)}")
+
+    doc_title = req.title.strip() if req.title and req.title.strip() else data["title"]
+    source_type = data["source_type"]  # "WEB" or "YOUTUBE"
+    full_text = data["text"]
+
+    file_type = FileType.YOUTUBE if source_type == "YOUTUBE" else FileType.WEB
+
+    # Generate document ID and save text file locally
+    doc_id = str(uuid.uuid4())
+    safe_filename = "".join(c for c in doc_title if c.isalnum() or c in (" ", "-", "_")).rstrip()
+    if not safe_filename:
+        safe_filename = f"{source_type}_{doc_id[:8]}"
+    safe_filename = f"{safe_filename[:50]}.txt"
+
+    file_path = os.path.join(settings.UPLOAD_DIR, f"{doc_id}_{safe_filename}")
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(full_text)
+
+    file_size = len(full_text.encode("utf-8"))
+
+    # Create document record
+    doc = Document(
+        doc_id=doc_id,
+        user_id=current_user.user_id,
+        filename=doc_title[:100],
+        file_path=file_path,
+        file_type=file_type,
+        file_size=file_size,
+        status=DocumentStatus.PROCESSING,
+    )
+    await doc.save()
+
+    # Chunk and index directly
+    try:
+        chunks = chunk_text([(1, full_text)], document_id=doc_id)
+
+        num_indexed = await index_document_chunks(doc_id, current_user.user_id, chunks)
+
+        doc.status = DocumentStatus.COMPLETED
+        doc.num_chunks = num_indexed
+        doc.preview_text = full_text[:500]
+        doc.processed_date = datetime.utcnow()
+        await doc.save()
+    except Exception as e:
+        doc.status = DocumentStatus.FAILED
+        await doc.save()
+        raise HTTPException(status_code=500, detail=f"Failed to index content: {str(e)}")
+
+    return {
+        "message": f"Successfully ingested {source_type.lower()} content",
+        "document": {
+            "doc_id": doc.doc_id,
+            "filename": doc.filename,
+            "file_type": doc.file_type.value,
+            "file_size": doc.file_size,
+            "status": doc.status.value,
+            "num_chunks": doc.num_chunks,
+            "upload_date": doc.upload_date.isoformat(),
+        }
+    }
+

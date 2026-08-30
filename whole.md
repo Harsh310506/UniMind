@@ -1357,3 +1357,6 @@ groq api key: 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
 
 openai api key: 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
 
+winget install UB-Mannheim.TesseractOCR
+
+https://github.com/UB-Mannheim/tesseract/wiki

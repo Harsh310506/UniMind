@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import SpotlightSearch from './SpotlightSearch';
+import Logo from './Logo';
 import {
     LayoutDashboard,
     FileText,
@@ -9,25 +11,30 @@ import {
     BarChart3,
     Mic,
     LogOut,
-    Brain,
     Menu,
     X,
     Settings,
     ChevronRight,
-    Zap
+    Zap,
+    Layers,
+    Scale,
+    Search
 } from 'lucide-react';
 
 const Layout: React.FC = () => {
     const { logout, user } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
-    const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [searchOpen, setSearchOpen] = useState(false);
 
     const navItems = [
         { icon: <LayoutDashboard size={19} />, label: 'Dashboard', path: '/dashboard', badge: null },
         { icon: <FileText size={19} />, label: 'Documents', path: '/documents', badge: null },
         { icon: <MessageSquare size={19} />, label: 'AI Chat', path: '/chat', badge: 'RAG' },
+        { icon: <Layers size={19} />, label: 'Flashcards', path: '/flashcards', badge: 'SM-2' },
         { icon: <Sparkles size={19} />, label: 'Quizzes', path: '/quiz', badge: null },
+        { icon: <Scale size={19} />, label: 'Compare Docs', path: '/compare', badge: null },
         { icon: <BarChart3 size={19} />, label: 'Sentiment', path: '/sentiment', badge: null },
         { icon: <Mic size={19} />, label: 'Speech-to-Text', path: '/speech', badge: 'Whisper' },
         { icon: <Settings size={19} />, label: 'Settings', path: '/settings', badge: null },
@@ -40,19 +47,36 @@ const Layout: React.FC = () => {
         navigate('/login');
     };
 
+    // Global keyboard shortcut for Spotlight Search (Ctrl+K or Cmd+K)
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
+                setSearchOpen(prev => !prev);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
     return (
         <div className="app-layout">
+            {/* Global Spotlight Search Modal */}
+            <SpotlightSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
+
             {/* Mobile Top Header */}
             <header className="mobile-header">
-                <div className="brand-logo" onClick={() => navigate('/dashboard')}>
-                    <div className="brand-icon">
-                        <Brain size={20} color="#ffffff" />
-                    </div>
-                    <span className="brand-name">UniMind</span>
+                <div className="brand-logo" onClick={() => navigate('/dashboard')} role="button" tabIndex={0}>
+                    <Logo size="sm" />
                 </div>
-                <button className="mobile-toggle-btn" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} aria-label="Toggle Navigation">
-                    {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
-                </button>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <button className="mobile-toggle-btn" onClick={() => setSearchOpen(true)} aria-label="Search">
+                        <Search size={18} />
+                    </button>
+                    <button className="mobile-toggle-btn" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} aria-label="Toggle Navigation">
+                        {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+                    </button>
+                </div>
             </header>
 
             {/* Backdrop for mobile */}
@@ -63,13 +87,7 @@ const Layout: React.FC = () => {
             {/* Sidebar Navigation */}
             <aside className={`sidebar-container ${mobileMenuOpen ? 'mobile-open' : ''}`}>
                 <div className="sidebar-header" onClick={() => navigate('/dashboard')} role="button" tabIndex={0}>
-                    <div className="brand-icon">
-                        <Brain size={22} color="#ffffff" />
-                    </div>
-                    <div className="brand-info">
-                        <span className="brand-title">UniMind</span>
-                        <span className="brand-subtitle">AI Knowledge Suite</span>
-                    </div>
+                    <Logo size="md" showSubtitle={true} />
                 </div>
 
                 <div className="nav-section-label">PLATFORM</div>
@@ -121,7 +139,7 @@ const Layout: React.FC = () => {
 
             {/* Main Application Area */}
             <div className="main-viewport">
-                {/* Desktop Topbar / Breadcrumbs */}
+                {/* Desktop Topbar */}
                 <header className="topbar">
                     <div className="topbar-breadcrumbs">
                         <span className="breadcrumb-app">UniMind</span>
@@ -130,10 +148,17 @@ const Layout: React.FC = () => {
                     </div>
 
                     <div className="topbar-actions">
+                        {/* Spotlight Search Trigger Button */}
+                        <button className="topbar-search-btn glass-panel" onClick={() => setSearchOpen(true)}>
+                            <Search size={14} />
+                            <span className="search-btn-text">Quick Search...</span>
+                            <span className="search-btn-kbd">Ctrl K</span>
+                        </button>
+
                         <div className="system-status-pill">
                             <span className="status-dot" />
                             <Zap size={13} className="zap-icon" />
-                            <span>Groq Llama-3 Active</span>
+                            <span>Groq Active</span>
                         </div>
                     </div>
                 </header>
@@ -192,7 +217,7 @@ const Layout: React.FC = () => {
                     background: var(--surface-2);
                     border: 1px solid var(--border);
                     color: var(--text-primary);
-                    padding: 0.4rem;
+                    padding: 0.45rem;
                     border-radius: 8px;
                     cursor: pointer;
                     display: flex;
@@ -263,15 +288,16 @@ const Layout: React.FC = () => {
                 .sidebar-nav-list {
                     display: flex;
                     flex-direction: column;
-                    gap: 0.3rem;
+                    gap: 0.25rem;
                     flex: 1;
+                    overflow-y: auto;
                 }
 
                 .nav-link {
                     display: flex;
                     align-items: center;
                     gap: 0.75rem;
-                    padding: 0.65rem 0.85rem;
+                    padding: 0.6rem 0.85rem;
                     border-radius: 10px;
                     color: var(--text-secondary);
                     text-decoration: none;
@@ -325,11 +351,11 @@ const Layout: React.FC = () => {
                 /* ─── Footer ─── */
                 .sidebar-footer-container {
                     margin-top: auto;
-                    padding-top: 1rem;
+                    padding-top: 0.85rem;
                     border-top: 1px solid var(--border);
                     display: flex;
                     flex-direction: column;
-                    gap: 0.6rem;
+                    gap: 0.5rem;
                 }
 
                 .user-profile-card {
@@ -391,7 +417,7 @@ const Layout: React.FC = () => {
                     justify-content: center;
                     gap: 0.5rem;
                     width: 100%;
-                    padding: 0.55rem;
+                    padding: 0.5rem;
                     background: transparent;
                     border: 1px solid transparent;
                     color: var(--text-muted);
@@ -420,7 +446,7 @@ const Layout: React.FC = () => {
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
-                    padding: 1rem 2.5rem;
+                    padding: 0.85rem 2.5rem;
                     border-bottom: 1px solid var(--border);
                     background: rgba(9, 13, 22, 0.6);
                     backdrop-filter: blur(12px);
@@ -452,6 +478,34 @@ const Layout: React.FC = () => {
                     align-items: center;
                     gap: 0.75rem;
                 }
+                .topbar-search-btn {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.6rem;
+                    padding: 0.4rem 0.85rem;
+                    border-radius: var(--radius-sm);
+                    border: 1px solid var(--border);
+                    background: var(--surface-2);
+                    color: var(--text-secondary);
+                    cursor: pointer;
+                    font-size: 0.82rem;
+                    transition: all 0.15s;
+                }
+                .topbar-search-btn:hover {
+                    border-color: rgba(99, 102, 241, 0.4);
+                    background: var(--surface-3);
+                    color: var(--text-primary);
+                }
+                .search-btn-kbd {
+                    font-size: 0.68rem;
+                    font-weight: 700;
+                    padding: 0.15rem 0.4rem;
+                    background: var(--surface);
+                    border: 1px solid var(--border);
+                    border-radius: 4px;
+                    color: var(--text-muted);
+                }
+
                 .system-status-pill {
                     display: inline-flex;
                     align-items: center;
@@ -486,12 +540,8 @@ const Layout: React.FC = () => {
 
                 /* ─── Responsive ─── */
                 @media (max-width: 900px) {
-                    .mobile-header {
-                        display: flex;
-                    }
-                    .topbar {
-                        display: none;
-                    }
+                    .mobile-header { display: flex; }
+                    .topbar { display: none; }
                     .sidebar-container {
                         position: fixed;
                         top: 0; bottom: 0; left: 0;
