@@ -1,0 +1,1348 @@
+# Multi-Function AI Platform - Simplified Execution Plan
+
+## **PROJECT OVERVIEW**
+
+### **Problem Statement**
+
+In today's information-rich environment, individuals and organizations face significant challenges in extracting actionable insights from their document collections. Users struggle with:
+
+1. **Information Retrieval Inefficiency**: Finding specific information across multiple documents is time-consuming and often requires manual reading of entire documents.
+
+2. **Lack of Interactive Document Intelligence**: Traditional document viewers are static and don't allow users to ask questions or have conversations about document content in natural language.
+
+3. **Manual Assessment Creation**: Educators and trainers spend hours manually creating quizzes and assessments from educational materials, a process that is both tedious and prone to inconsistency.
+
+4. **Fragmented Tools**: Users must switch between multiple applications for document analysis, Q&A, quiz generation, and sentiment analysis, leading to workflow disruption and context loss.
+
+5. **Accessibility Barriers**: Documents in various formats (scanned PDFs, images, different file types) require different tools for processing, creating barriers to unified information access.
+
+**Solution**: A unified, intelligent platform that transforms static documents into interactive knowledge sources, enabling natural language conversations, automatic assessment generation, and comprehensive document intelligence through a single, intuitive interface.
+
+---
+
+## **REVISED TECH STACK (Simplified)**
+
+### **Frontend**
+- **Framework**: React 18 with TypeScript
+- **State Management**: React Context API + React Query
+- **UI Framework**: Tailwind CSS + shadcn/ui components
+- **Routing**: React Router v6
+- **API Client**: Axios
+- **Build Tool**: Vite
+- **Form Handling**: React Hook Form + Zod validation
+
+### **Backend**
+- **API Framework**: FastAPI (Python 3.10+)
+- **Database**: mongodb atlas
+- **ORM**: SQLAlchemy 2.0
+- **Authentication**: JWT with python-jose
+- **File Storage**: Local filesystem (organized structure)
+- **Background Tasks**: FastAPI BackgroundTasks (simple async)
+
+### **AI/ML Stack**
+
+**API-Based Services:**
+- **Primary LLM**: Groq API
+  - For conversations, quiz generation, explanations
+- **Free Alternative**: Groq API (extremely fast, free tier)
+  - Models: Llama 3, Mixtral, Gemma
+- **Embeddings**: OpenAI Embeddings API (text-embedding-3-small)
+- **Free Alternative Embeddings**: HuggingFace Inference API (free tier)
+
+**Local Processing:**
+- **OCR**: Tesseract OCR (free, open-source)
+- **PDF Processing**: PyMuPDF (pymupdf)
+- **Image Processing**: Pillow
+- **Text Processing**: spaCy or NLTK
+
+**Retrieval:**
+- **Vector Store**: ChromaDB (embedded, no server needed)
+- **BM25**: rank-bm25 library
+- **Hybrid Search**: Custom implementation
+
+**Additional Services:**
+- **Sentiment Analysis**: 
+  - Groq API (simple prompt-based)
+  - Free: HuggingFace Inference API (distilbert-base-uncased-finetuned-sst-2)
+- **Speech-to-Text**: 
+  - AssemblyAI
+  - Free: AssemblyAI (free tier) or Web Speech API
+
+---
+
+## **SIMPLIFIED ARCHITECTURE**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    React Frontend                        │
+│  (Chat UI, Document Upload, Quiz Interface, Dashboard)  │
+└─────────────────┬───────────────────────────────────────┘
+                  │ HTTP REST API
+┌─────────────────▼───────────────────────────────────────┐
+│                  FastAPI Backend                         │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │  API Routes (Auth, Documents, Chat, Quiz, etc.)  │  │
+│  └────────────────┬─────────────────────────────────┘  │
+│  ┌────────────────▼─────────────────────────────────┐  │
+│  │           Service Layer                          │  │
+│  │  • Document Processing  • RAG Engine             │  │
+│  │  • Quiz Generation      • Sentiment Analysis     │  │
+│  └────────────────┬─────────────────────────────────┘  │
+│  ┌────────────────▼─────────────────────────────────┐  │
+│  │          Data Layer                              │  │
+│  │  • MongoDB Atlas  • ChromaDB (vectors)       │  │
+│  │  • File System        • BM25 Index               │  │
+│  └──────────────────────────────────────────────────┘  │
+└─────────────────┬───────────────────────────────────────┘
+                  │ External API Calls
+┌─────────────────▼───────────────────────────────────────┐
+│              External AI Services                        │
+│  • OpenAI/Groq API    • HuggingFace API                 │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## **DETAILED STEP-BY-STEP EXECUTION**
+
+### **PHASE 1: Project Setup & Foundation (Days 1-3)**
+
+**Step 1.1: Development Environment Setup**
+- Install Python 3.10+ and create virtual environment
+- Install Node.js 18+ and npm
+- Install Git and initialize repository with .gitignore
+- Set up project directory structure:
+  ```
+  project-root/
+  ├── backend/
+  │   ├── app/
+  │   │   ├── api/          # API route handlers
+  │   │   ├── core/         # Config, security, dependencies
+  │   │   ├── models/       # Database models
+  │   │   ├── schemas/      # Pydantic schemas
+  │   │   ├── services/     # Business logic
+  │   │   └── utils/        # Helper functions
+  │   ├── uploads/          # Document storage
+  │   ├── database/         # SQLite file location
+  │   ├── vector_store/     # ChromaDB persistence
+  │   ├── requirements.txt
+  │   └── main.py
+  ├── frontend/
+  │   ├── src/
+  │   │   ├── components/   # React components
+  │   │   ├── pages/        # Page components
+  │   │   ├── services/     # API calls
+  │   │   ├── hooks/        # Custom hooks
+  │   │   ├── context/      # React context
+  │   │   ├── types/        # TypeScript types
+  │   │   └── utils/        # Helper functions
+  │   ├── public/
+  │   ├── package.json
+  │   └── vite.config.ts
+  └── README.md
+  ```
+
+**Step 1.2: Install Dependencies**
+
+Backend requirements.txt:
+- fastapi
+- uvicorn[standard]
+- sqlalchemy
+- python-jose[cryptography]
+- passlib[bcrypt]
+- python-multipart
+- pydantic-settings
+- pymupdf
+- pytesseract
+- pillow
+- chromadb
+- rank-bm25
+- openai
+- python-dotenv
+- sentence-transformers (optional, for local embeddings)
+
+Frontend package.json:
+- react, react-dom
+- react-router-dom
+- axios
+- @tanstack/react-query
+- tailwindcss
+- react-hook-form
+- zod
+- lucide-react (icons)
+- shadcn/ui components
+
+**Step 1.3: Configuration Setup**
+- Create .env file for backend with:
+  - GROQ_API_KEY
+  - SECRET_KEY for JWT
+  - MONGODB_URI
+  - UPLOAD_DIR path
+- Create configuration loader using pydantic-settings
+- Set up environment variable validation
+- Create separate .env.example file for documentation
+
+---
+
+### **PHASE 2: Database & Core Backend Setup (Days 4-6)**
+
+**Step 2.1: Database Schema Design**
+
+Create SQLAlchemy models for:
+
+**Users Table:**
+- id (UUID, primary key)
+- email (unique, indexed)
+- hashed_password
+- full_name
+- is_active (boolean)
+- created_at (timestamp)
+- updated_at (timestamp)
+
+**Documents Table:**
+- id (UUID, primary key)
+- user_id (foreign key to users)
+- filename (original name)
+- file_path (storage location)
+- file_type (PDF, DOCX, TXT, IMAGE)
+- file_size (bytes)
+- status (PROCESSING, COMPLETED, FAILED)
+- num_chunks (for tracking)
+- upload_date (timestamp)
+- processed_date (timestamp)
+
+**Conversations Table:**
+- id (UUID, primary key)
+- user_id (foreign key)
+- title (auto-generated from first message)
+- document_ids (JSON array, for multi-doc conversations)
+- created_at (timestamp)
+- updated_at (timestamp)
+
+**Messages Table:**
+- id (UUID, primary key)
+- conversation_id (foreign key)
+- role (user, assistant, system)
+- content (text)
+- sources (JSON array of chunk references)
+- timestamp (timestamp)
+
+**Quizzes Table:**
+- id (UUID, primary key)
+- document_id (foreign key)
+- user_id (foreign key)
+- title
+- difficulty (EASY, MEDIUM, HARD, MIXED)
+- num_questions (integer)
+- status (GENERATING, COMPLETED, FAILED)
+- created_at (timestamp)
+
+**Questions Table:**
+- id (UUID, primary key)
+- quiz_id (foreign key)
+- question_number (integer)
+- question_text
+- options (JSON array)
+- correct_answer (integer index)
+- explanation (text)
+- difficulty (EASY, MEDIUM, HARD)
+
+**Step 2.2: Database Initialization**
+- Create Alembic migration scripts
+- Set up database connection with connection pooling
+- Create database session dependency for FastAPI
+- Implement database initialization script
+- Add database health check endpoint
+
+**Step 2.3: FastAPI Application Setup**
+- Initialize FastAPI app with metadata (title, description, version)
+- Configure CORS middleware for local development (http://localhost:5173)
+- Add exception handlers for common errors
+- Implement request logging middleware
+- Create health check endpoint (/health)
+- Set up automatic API documentation (Swagger UI at /docs)
+
+---
+
+### **PHASE 3: Authentication System (Days 7-8)**
+
+**Step 3.1: Security Utilities**
+- Create password hashing function using passlib with bcrypt
+- Implement password verification function
+- Create JWT token generation function with expiration
+- Implement JWT token verification and decoding
+- Create function to get current user from token
+- Add password strength validation utility
+
+**Step 3.2: Authentication Endpoints**
+
+**POST /api/auth/register:**
+- Accept email, password, full_name
+- Validate email format and password strength
+- Check if user already exists
+- Hash password with bcrypt
+- Create user record in database
+- Return user data (without password)
+
+**POST /api/auth/login:**
+- Accept email and password
+- Validate credentials against database
+- Verify password hash
+- Generate JWT access token (24h expiration)
+- Generate refresh token (7d expiration)
+- Return tokens and user data
+
+**POST /api/auth/refresh:**
+- Accept refresh token
+- Verify token validity
+- Generate new access token
+- Return new access token
+
+**GET /api/auth/me:**
+- Require valid JWT token
+- Extract user from token
+- Return current user profile
+
+**Step 3.3: Authentication Dependency**
+- Create FastAPI dependency to extract and verify JWT from headers
+- Implement authorization checks for protected routes
+- Add optional authentication for public endpoints
+- Create role-based access decorator (for future use)
+
+---
+
+### **PHASE 4: Document Management System (Days 9-12)**
+
+**Step 4.1: File Upload Infrastructure**
+- Create secure upload directory structure (organized by user_id)
+- Implement file validation function:
+  - Check file extensions (.pdf, .docx, .txt, .jpg, .png)
+  - Validate file size (max 50MB)
+  - Check MIME types for security
+  - Sanitize filenames
+- Create unique filename generator (UUID-based)
+- Implement file storage utility
+
+**Step 4.2: Document Upload Endpoint**
+
+**POST /api/documents/upload:**
+- Accept multipart/form-data with file
+- Authenticate user
+- Validate file
+- Generate unique file ID and path
+- Save file to disk
+- Create document record with status=PROCESSING
+- Trigger background processing
+- Return document metadata immediately
+
+**Step 4.3: Document Processing Pipeline**
+
+Create document processing service with these steps:
+
+**Text Extraction:**
+- For PDF files:
+  - Use PyMuPDF to extract text page by page
+  - Handle scanned PDFs by detecting if text is extractable
+  - If not extractable, trigger OCR processing
+  - Preserve page numbers and structure
+  
+- For DOCX files:
+  - Use python-docx to extract paragraphs
+  - Preserve heading hierarchy
+  - Extract tables and convert to text
+  
+- For TXT files:
+  - Read with proper encoding detection (utf-8, latin-1)
+  - Handle special characters
+  
+- For Image files:
+  - Use Tesseract OCR with preprocessing:
+    - Convert to grayscale
+    - Apply thresholding
+    - Denoise if needed
+  - Extract text with confidence scores
+  - Handle multiple languages if needed
+
+**Text Cleaning:**
+- Remove excessive whitespace
+- Normalize Unicode characters
+- Fix common OCR errors (if applicable)
+- Remove page headers/footers (patterns)
+- Preserve important formatting markers
+
+**Text Chunking Strategy:**
+- Implement semantic chunking:
+  - Split by paragraphs primarily
+  - Keep chunk size between 500-1000 tokens
+  - Add overlap of 100 tokens between chunks
+  - Preserve sentence boundaries
+  - Include metadata (page number, section)
+- Create chunk metadata:
+  - chunk_id (sequential)
+  - chunk_text
+  - chunk_index
+  - source_page
+  - document_id
+  - character_count
+  - token_count (approximate)
+
+**Step 4.4: Document Management Endpoints**
+
+**GET /api/documents:**
+- Authenticate user
+- Filter by user_id
+- Support pagination (page, page_size)
+- Support filtering (file_type, status, date_range)
+- Support sorting (upload_date, filename)
+- Return list of documents with metadata
+
+**GET /api/documents/{document_id}:**
+- Authenticate user
+- Verify document ownership
+- Return full document details including:
+  - Basic metadata
+  - Processing status
+  - Number of chunks
+  - File size
+  - Preview text (first 500 chars)
+
+**DELETE /api/documents/{document_id}:**
+- Authenticate user
+- Verify ownership
+- Soft delete (mark as deleted, don't remove file immediately)
+- Delete associated vectors from ChromaDB
+- Delete associated conversations and quizzes (cascade)
+- Return success status
+
+**GET /api/documents/{document_id}/download:**
+- Authenticate user
+- Verify ownership
+- Stream file for download
+- Set proper headers (Content-Type, Content-Disposition)
+
+---
+
+### **PHASE 5: Vector Database & Retrieval System (Days 13-16)**
+
+**Step 5.1: ChromaDB Setup**
+- Initialize ChromaDB client with persistent storage
+- Create collection with configuration:
+  - Collection name: "document_chunks"
+  - Metadata: document_id, chunk_index, page_number, user_id
+  - Distance metric: cosine similarity
+- Set up collection get-or-create pattern
+- Implement collection health check
+
+**Step 5.2: Embedding Generation Service**
+
+**Using OpenAI Embeddings:**
+- Create embedding client wrapper
+- Implement batch embedding function:
+  - Accept list of text chunks
+  - Call OpenAI API with text-embedding-3-small model
+  - Handle rate limits with retry logic
+  - Return embedding vectors (1536 dimensions)
+- Add embedding caching (store in memory for recently used docs)
+- Implement error handling for API failures
+
+**Alternative - Using HuggingFace (Free):**
+- Use sentence-transformers library locally
+- Load model: all-MiniLM-L6-v2 (384 dimensions)
+- Create embedding function with batching
+- Cache model in memory
+- Handle device selection (CPU/GPU)
+
+**Step 5.3: Document Indexing Service**
+- Create function to index document chunks:
+  - Accept document_id and list of chunks
+  - Generate embeddings for all chunks
+  - Prepare metadata for each chunk
+  - Insert into ChromaDB with unique IDs
+  - Handle batch insertion (100 chunks at a time)
+  - Update document status to COMPLETED
+- Add error handling and rollback mechanism
+- Implement index verification (count check)
+
+**Step 5.4: Vector Search Implementation**
+- Create semantic search function:
+  - Accept query text and optional document filter
+  - Generate query embedding
+  - Search ChromaDB with:
+    - Top K results (default 10)
+    - Minimum similarity threshold (0.5)
+    - Metadata filters (document_id, user_id)
+  - Return chunks with similarity scores
+- Add relevance scoring normalization
+
+**Step 5.5: BM25 Keyword Search**
+- Create BM25 index builder:
+  - Load all chunks for a document
+  - Tokenize text (lowercase, remove stopwords)
+  - Build BM25 index using rank-bm25
+  - Store index in memory or pickle file
+- Implement BM25 search function:
+  - Accept query and document filter
+  - Tokenize query
+  - Get BM25 scores for all chunks
+  - Return top K results with scores
+- Add index update mechanism for new documents
+
+**Step 5.6: Hybrid Retrieval System**
+- Create unified retrieval function:
+  - Accept query, document_ids, top_k
+  - Run semantic search and BM25 search in parallel
+  - Normalize scores to 0-1 range:
+    - Semantic: already normalized (cosine similarity)
+    - BM25: divide by max score in results
+  - Combine scores with weights:
+    - Final score = 0.7 * semantic_score + 0.3 * bm25_score
+  - Re-rank results by combined score
+  - Remove duplicates (same chunk_id)
+  - Return top K unique chunks with sources
+- Add configuration for adjustable weights
+- Implement result deduplication strategy
+
+**Step 5.7: Context Window Management**
+- Create function to prepare context from retrieved chunks:
+  - Accept chunks and token limit (default 3000)
+  - Sort chunks by relevance and document order
+  - Concatenate chunk texts with separators
+  - Include source references (page numbers)
+  - Truncate if exceeds token limit
+  - Add document titles and metadata
+- Format context for LLM consumption
+
+---
+
+### **PHASE 6: RAG-Based Conversational AI (Days 17-20)**
+
+**Step 6.1: Conversation Management Service**
+
+**Create Conversation:**
+- Accept user_id and optional document_ids
+- Generate conversation title (from first message or default)
+- Create conversation record
+- Return conversation_id
+
+**Get Conversation History:**
+- Accept conversation_id
+- Retrieve all messages ordered by timestamp
+- Format for display
+- Include message metadata (sources, timestamps)
+
+**Update Conversation:**
+- Update title
+- Add/remove associated documents
+- Mark as archived
+
+**Step 6.2: LLM Integration Service**
+
+**OpenAI Integration:**
+- Create OpenAI client wrapper
+- Implement chat completion function:
+  - Accept messages array (system, user, assistant history)
+  - Use GPT-4 or GPT-3.5-turbo model
+  - Configure parameters:
+    - temperature: 0.7 (balanced creativity)
+    - max_tokens: 1000 (reasonable length)
+    - top_p: 0.9
+  - Handle streaming responses (optional)
+  - Return assistant response
+- Add error handling for API failures
+- Implement retry logic with exponential backoff
+- Track token usage for cost monitoring
+
+**Groq Integration (Alternative):**
+- Create Groq client (uses OpenAI-compatible SDK)
+- Use llama3-70b-8192 or mixtral-8x7b-32768
+- Configure for faster responses
+- Same interface as OpenAI for easy switching
+
+**Step 6.3: RAG Prompt Engineering**
+
+**System Prompt Template:**
+```
+You are an intelligent document assistant. You answer questions based on the provided context from documents.
+
+INSTRUCTIONS:
+1. Answer questions using ONLY information from the provided context
+2. If information is not in the context, say "I don't have that information in the provided documents"
+3. Cite sources using [Page X] notation when referencing specific information
+4. Be concise but comprehensive
+5. If the question is unclear, ask for clarification
+6. Maintain a professional and helpful tone
+
+CONTEXT:
+{context}
+
+When answering, always ground your response in the provided context.
+```
+
+**User Query Enhancement:**
+- Implement query reformation:
+  - Expand abbreviations
+  - Add context from conversation history
+  - Rephrase for better retrieval
+  - Extract key entities
+
+**Response Post-Processing:**
+- Add source citations to response
+- Format code blocks if present
+- Add warning if confidence is low
+- Include "Learn More" links to document pages
+
+**Step 6.4: Chat Endpoint Implementation**
+
+**POST /api/chat/conversations/{conversation_id}/messages:**
+- Authenticate user
+- Verify conversation ownership
+- Accept message content and optional document_ids
+- Retrieve conversation history (last 5 messages)
+- If document_ids provided:
+  - Perform hybrid retrieval on query
+  - Prepare context from top chunks
+  - Build prompt with system message, context, and history
+- If no documents (general chat):
+  - Build prompt with history only
+- Call LLM API with constructed prompt
+- Stream response if requested
+- Store user message and assistant response
+- Return assistant response with sources
+
+**GET /api/chat/conversations:**
+- List user's conversations
+- Support pagination and search
+- Return preview of last message
+
+**GET /api/chat/conversations/{conversation_id}:**
+- Return full conversation with all messages
+- Include document references
+- Include metadata (created_at, message_count)
+
+**DELETE /api/chat/conversations/{conversation_id}:**
+- Soft delete conversation
+- Keep messages for audit if needed
+
+**Step 6.5: Context Awareness & Memory**
+- Implement conversation summary for long chats:
+  - After 10+ messages, create summary of conversation
+  - Include summary in system prompt
+  - Reduce token usage for older messages
+- Add user preferences tracking:
+  - Preferred response length
+  - Tone preferences
+  - Domain expertise level
+
+---
+
+### **PHASE 7: Quiz Generation System (Days 21-24)**
+
+**Step 7.1: Quiz Generation Service Architecture**
+- Create quiz difficulty level enum (EASY, MEDIUM, HARD, MIXED)
+- Define question structure schema
+- Create quiz configuration (questions per difficulty)
+
+**Step 7.2: Content Extraction for Quiz**
+- Create function to extract quiz-worthy content:
+  - Select diverse chunks from document
+  - Identify key concepts and facts
+  - Extract definitions, processes, comparisons
+  - Avoid chunks with incomplete information
+- Implement content ranking by information density
+- Ensure coverage across entire document
+
+**Step 7.3: LLM-Based Quiz Generation**
+
+**Prompt Template for Question Generation:**
+```
+You are an expert quiz creator. Generate {num_questions} multiple-choice questions from the provided content.
+
+CONTENT:
+{document_chunks}
+
+REQUIREMENTS:
+- Difficulty level: {difficulty}
+- Each question must have exactly 4 options (A, B, C, D)
+- Only ONE option should be correct
+- Incorrect options should be plausible but clearly wrong
+- Provide a clear explanation for the correct answer
+- Questions should test understanding, not just memorization
+
+DIFFICULTY GUIDELINES:
+- EASY: Direct recall, definitions, basic facts
+- MEDIUM: Application, comparison, analysis
+- HARD: Synthesis, evaluation, complex scenarios
+
+Return questions in this JSON format:
+{
+  "questions": [
+    {
+      "question": "question text",
+      "options": ["option A", "option B", "option C", "option D"],
+      "correct_answer": 0,  // index of correct option
+      "explanation": "why this is correct and others are wrong",
+      "difficulty": "EASY"
+    }
+  ]
+}
+```
+
+**Generation Function:**
+- Accept document_id, difficulty, num_questions
+- Retrieve and prepare document chunks
+- For MIXED difficulty:
+  - Generate equal distribution of EASY, MEDIUM, HARD
+  - Call API separately for each difficulty level
+- Construct prompts with content and requirements
+- Call OpenAI/Groq API with JSON mode enabled
+- Parse and validate JSON response
+- Ensure question quality (unique, grammatical)
+- Store questions in database
+
+**Step 7.4: Question Validation**
+- Check for duplicate questions
+- Validate option count (must be 4)
+- Ensure correct_answer is valid index (0-3)
+- Check question and option lengths (reasonable)
+- Verify explanation is provided
+- Flag low-quality questions for manual review
+
+**Step 7.5: Quiz Management Endpoints**
+
+**POST /api/quiz/generate:**
+- Authenticate user
+- Accept document_id, difficulty, num_questions (default 10)
+- Verify document ownership and completion status
+- Create quiz record with status=GENERATING
+- Trigger background quiz generation
+- Return quiz_id immediately
+
+**GET /api/quiz/{quiz_id}/status:**
+- Check generation progress
+- Return status (GENERATING, COMPLETED, FAILED)
+- If completed, return quiz summary
+
+**GET /api/quiz/{quiz_id}:**
+- Authenticate and verify ownership
+- Return full quiz with all questions
+- Do not show correct answers initially (quiz mode)
+- Track quiz attempts (for analytics)
+
+**POST /api/quiz/{quiz_id}/submit:**
+- Accept user's answers (question_id → selected_option)
+- Calculate score
+- Return results with correct answers and explanations
+- Store attempt for analytics
+
+**GET /api/quiz/document/{document_id}:**
+- List all quizzes for a document
+- Support filtering by difficulty
+- Return quiz summaries
+
+**DELETE /api/quiz/{quiz_id}:**
+- Soft delete quiz
+- Remove questions
+
+**Step 7.6: Quiz Export Functionality**
+
+**GET /api/quiz/{quiz_id}/export:**
+- Support multiple formats: JSON, PDF
+- For JSON:
+  - Return structured quiz data
+  - Include all questions, options, answers, explanations
+- For PDF (bonus):
+  - Use reportlab or weasyprint
+  - Format as printable quiz
+  - Create answer key on separate page
+- Set appropriate response headers
+
+**Step 7.7: Background Task Handling**
+- Use FastAPI's BackgroundTasks for async processing
+- Create task wrapper for quiz generation:
+  - Update quiz status to GENERATING
+  - Call generation service
+  - Handle errors gracefully
+  - Update status to COMPLETED or FAILED
+  - Log any errors for debugging
+- Add task progress tracking (optional)
+
+---
+
+### **PHASE 8: Additional AI Services (Days 25-26)**
+
+**Step 8.1: Sentiment Analysis Service**
+
+**Using OpenAI (Simple):**
+- Create sentiment analysis function:
+  - Accept text input
+  - Construct prompt: "Analyze the sentiment of the following text. Return only one word: POSITIVE, NEGATIVE, or NEUTRAL. Text: {text}"
+  - Call GPT-3.5 with low temperature (0.3)
+  - Parse response
+  - Return sentiment label and confidence (simulated)
+
+**Using HuggingFace (Free):**
+- Use transformers library
+- Load distilbert-base-uncased-finetuned-sst-2-english
+- Create inference function:
+  - Tokenize input text
+  - Run through model
+  - Get sentiment scores
+  - Return label and confidence score
+
+**Endpoint:**
+**POST /api/analysis/sentiment:**
+- Accept text input (up to 5000 chars)
+- Authenticate user
+- Run sentiment analysis
+- Return result with label and score
+- Log for analytics
+
+**Step 8.2: Speech-to-Text Service**
+
+**Using OpenAI Whisper API:**
+- Create audio upload endpoint
+- Validate audio format (mp3, wav, m4a, webm)
+- Validate file size (max 25MB)
+- Call Whisper API:
+  - model: whisper-1
+  - language: auto-detect or specified
+  - response_format: json or verbose_json
+- Return transcription with timestamps
+
+**Alternative - Web Speech API (Frontend):**
+- No backend needed
+- Use browser's native speech recognition
+- Handle in React component
+- Send text to backend for processing
+
+**Endpoint:**
+**POST /api/speech/transcribe:**
+- Accept audio file
+- Authenticate user
+- Validate file
+- Call Whisper API
+- Return transcription object:
+  - text (full transcription)
+  - segments (with timestamps)
+  - language detected
+- Store transcription for user access
+
+**Step 8.3: Document Summarization**
+- Create summarization endpoint
+- Accept document_id
+- Retrieve document chunks
+- Construct summarization prompt:
+  - "Provide a comprehensive summary of the following document in 3-5 paragraphs."
+- Call LLM with larger context window
+- Return structured summary:
+  - Executive summary (2-3 sentences)
+  - Detailed summary (3-5 paragraphs)
+  - Key points (bullet list)
+
+---
+
+### **PHASE 9: Frontend Development (Days 27-40)**
+
+**Step 9.1: Project Initialization**
+- Create React app with Vite
+- Configure TypeScript with strict mode
+- Set up Tailwind CSS
+- Install and configure shadcn/ui
+- Set up React Router
+- Configure Axios with interceptors
+- Set up React Query
+
+**Step 9.2: Authentication Flow**
+
+**Login Page (pages/Login.tsx):**
+- Create form with email and password fields
+- Implement form validation with Zod schema
+- Handle login API call
+- Store JWT token in localStorage
+- Redirect to dashboard on success
+- Show error messages on failure
+
+**Register Page (pages/Register.tsx):**
+- Form with email, password, confirm password, full name
+- Validate password strength
+- Check password match
+- Call register API
+- Auto-login on successful registration
+
+**Authentication Context (context/AuthContext.tsx):**
+- Provide user state globally
+- Implement login, logout, register functions
+- Check token validity on app load
+- Auto-refresh token mechanism
+- Provide isAuthenticated status
+
+**Protected Route Component:**
+- Wrapper for authenticated routes
+- Check authentication status
+- Redirect to login if not authenticated
+- Show loading state while checking
+
+**Step 9.3: Dashboard & Layout**
+
+**Main Layout Component:**
+- Sidebar navigation:
+  - Dashboard link
+  - Documents link
+  - Chat link
+  - Quiz link
+  - Settings link
+  - Logout button
+- Top navbar with user info
+- Main content area
+- Responsive design (collapse sidebar on mobile)
+
+**Dashboard Page:**
+- Show statistics cards:
+  - Total documents uploaded
+  - Total conversations
+  - Quizzes generated
+  - Recent activity
+- Quick actions:
+  - Upload document button
+  - Start new chat button
+  - Generate quiz button
+- Recent items list (documents, conversations)
+
+**Step 9.4: Document Management Interface**
+
+**Documents Page (pages/Documents.tsx):**
+- Header with "Upload Document" button
+- Search bar for filtering
+- Filter dropdown (file type, status)
+- Sort options (date, name, size)
+- Document grid/list view toggle
+
+**Document Card Component:**
+- Show document thumbnail/icon
+- Display filename, file type, size
+- Show upload date
+- Display status badge (processing/completed)
+- Action buttons:
+  - View details
+  - Start chat
+  - Generate quiz
+  - Download
+  - Delete
+
+**Upload Modal Component:**
+- Drag-and-drop zone
+- File browser button
+- Show selected files with preview
+- Upload progress bar
+- Cancel upload option
+- Success/error notifications
+
+**Document Detail Page:**
+- Full document information
+- Preview of extracted text (first few paragraphs)
+- Statistics (pages, chunks, word count)
+- Associated conversations and quizzes
+- Action buttons (download, delete)
+
+**Step 9.5: Chat Interface**
+
+**Chat Page Layout:**
+- Sidebar with conversation list:
+  - Search conversations
+  - Create new conversation button
+  - List of conversations with preview
+  - Delete conversation option
+- Main chat area:
+  - Conversation title (editable)
+  - Message thread
+  - Input area
+
+**Message Component:**
+- User messages (right-aligned, blue bubble)
+- Assistant messages (left-aligned, gray bubble)
+- Timestamp
+- Source citations (expandable)
+- Copy message button
+
+**Chat Input Component:**
+- Textarea with auto-resize
+- Send button
+- Document selector (attach documents to conversation)
+- Character count
+- Typing indicator while AI responds
+
+**New Conversation Modal:**
+- Option to start with documents or general chat
+- Multi-select document picker
+- Conversation name input (optional)
+- Create button
+
+**Streaming Response Handling:**
+- Show typing indicator
+- Stream tokens as they arrive
+- Display cursor animation
+- Update UI progressively
+
+**Step 9.6: Quiz Interface**
+
+**Quiz Generation Page:**
+- Document selector dropdown
+- Difficulty level selector (EASY, MEDIUM, HARD, MIXED)
+- Number of questions slider (5-20)
+- Generate button
+- Preview of recent quizzes
+
+**Quiz Generation Status:**
+- Progress indicator while generating
+- Estimated time remaining
+- Cancel option
+- Notification on completion
+
+**Quiz Taking Interface:**
+- Question counter (Question 1 of 10)
+- Progress bar
+- Question display with options (radio buttons)
+- Navigation buttons (previous, next)
+- Submit quiz button
+- Timer (optional)
+
+**Quiz Results Page:**
+- Score display (percentage, fraction)
+- Results by difficulty (if mixed)
+- List of questions with:
+  - User's answer
+  - Correct answer
+  - Explanation
+  - Color coding (correct/incorrect)
+- Retake quiz button
+- Export results button
+
+**Quiz History:**
+- List of completed quizzes
+- Score for each attempt
+- Date taken
+- View results link
+- Retake option
+
+**Step 9.7: Additional Features UI**
+
+**Sentiment Analysis Page:**
+- Text input area (large textarea)
+- Analyze button
+- Results display:
+  - Sentiment label (with icon and color)
+  - Confidence score (progress bar)
+  - Visual representation
+- History of recent analyses
+
+**Speech-to-Text Page:**
+- Audio file upload area
+- Record audio button (using Web Audio API)
+- Recording controls (start, stop, pause)
+- Waveform visualization (optional)
+- Transcription display
+- Download transcription button
+- Send to chat option
+
+**Settings Page:**
+- User profile section:
+  - Update name, email
+  - Change password
+- Preferences:
+  - Default quiz difficulty
+  - Chat response length
+  - Theme selection (light/dark)
+- API usage statistics (if available)
+- Delete account option
+
+**Step 9.8: State Management**
+
+**React Query Setup:**
+- Create query keys for all resources
+- Implement custom hooks:
+  - useDocuments (with pagination)
+  - useDocument (single)
+  - useConversations
+  - useConversation
+  - useQuiz
+  - etc.
+- Configure caching strategies
+- Implement optimistic updates
+- Handle error states globally
+
+**Context for UI State:**
+- Theme context
+- Notification context (toast messages)
+- Modal management context
+
+**Step 9.9: API Integration Layer**
+
+**Create API service (services/api.ts):**
+- Configure Axios instance with base URL
+- Add request interceptor for auth token
+- Add response interceptor for error handling
+- Implement API methods for all endpoints:
+  - Auth: login, register, logout, refresh
+  - Documents: upload, list, get, delete, download
+  - Chat: createConversation, sendMessage, getHistory
+  - Quiz: generate, get, submit, export
+  - Analysis: sentiment, transcribe
+- Handle file uploads with proper headers
+- Implement request cancellation
+- Add retry logic for failed requests
+
+**Step 9.10: Error Handling & UX**
+- Create error boundary component
+- Implement toast notifications (using sonner or react-hot-toast)
+- Show loading states for all async operations
+- Add skeleton loaders for content
+- Implement empty states (no documents, no conversations)
+- Add confirmation dialogs for destructive actions
+- Show connection lost indicator
+- Implement offline detection
+
+---
+
+### **PHASE 10: Integration & Testing (Days 41-45)**
+
+**Step 10.1: Backend Integration Testing**
+- Test all API endpoints with Postman or Thunder Client
+- Verify request/response formats
+- Test authentication flow end-to-end
+- Test file upload with various file types
+- Verify document processing pipeline
+- Test RAG retrieval accuracy
+- Test quiz generation quality
+- Verify error handling
+
+**Step 10.2: Frontend-Backend Integration**
+- Test complete user flows:
+  - Registration → Login → Upload → Chat
+  - Upload → Generate Quiz → Take Quiz
+  - Upload → Sentiment Analysis
+- Verify token refresh mechanism
+- Test file upload progress
+- Verify streaming responses in chat
+- Test pagination and filtering
+- Check error message display
+
+**Step 10.3: Manual Testing Scenarios**
+- Create test user accounts
+- Upload various document types
+- Test with large documents (20+ pages)
+- Test with scanned PDFs (OCR)
+- Test with images
+- Have conversations with different documents
+- Generate quizzes at all difficulty levels
+- Test edge cases (empty files, corrupted files)
+- Test concurrent operations
+
+**Step 10.4: Performance Testing**
+- Test document processing time
+- Measure chat response latency
+- Test quiz generation time
+- Check memory usage during uploads
+- Test with multiple simultaneous users
+- Monitor API call costs (OpenAI/Groq)
+
+**Step 10.5: Bug Fixing Sprint**
+- Document all found issues
+- Prioritize bugs (critical, high, medium, low)
+- Fix critical bugs first
+- Improve error messages
+- Enhance loading states
+- Optimize slow operations
+
+---
+
+### **PHASE 11: Optimization & Polish (Days 46-50)**
+
+**Step 11.1: Backend Optimization**
+- Add database indexes for frequently queried fields
+- Implement query optimization (select only needed fields)
+- Add caching for frequently accessed data
+- Optimize chunk retrieval (batch operations)
+- Implement connection pooling
+- Add request rate limiting
+- Optimize file storage (compression if needed)
+
+**Step 11.2: Frontend Optimization**
+- Implement code splitting (lazy loading routes)
+- Optimize bundle size
+- Add image lazy loading
+- Implement virtual scrolling for long lists
+- Optimize re-renders (React.memo, useMemo)
+- Add service worker for offline support (optional)
+
+**Step 11.3: User Experience Enhancements**
+- Add helpful tooltips and hints
+- Improve error messages (more actionable)
+- Add keyboard shortcuts
+- Implement dark mode
+- Add animations and transitions
+- Improve mobile responsiveness
+- Add loading skeletons
+- Implement drag-and-drop for file upload
+
+**Step 11.4: Documentation**
+- Write API documentation with examples
+- Create user guide with screenshots
+- Document environment setup
+- Write deployment guide
+- Create troubleshooting guide
+- Document API costs and limits
+
+**Step 11.5: Security Hardening**
+- Implement rate limiting per user
+- Add CSRF protection
+- Sanitize all user inputs
+- Implement file upload validation (magic bytes)
+- Add SQL injection protection (already in SQLAlchemy)
+- Implement secure password reset flow
+- Add security headers
+- Enable HTTPS in production
+
+---
+
+### **PHASE 12: Deployment Preparation (Days 51-55)**
+
+**Step 12.1: Production Configuration**
+- Create production .env template
+- Set up production database (PostgreSQL on managed service)
+- Configure file storage (local or S3-compatible)
+- Set up production API keys
+- Configure CORS for production domain
+- Set up logging to file
+
+**Step 12.2: Backend Deployment**
+- Choose hosting platform:
+  - **Option 1**: DigitalOcean App Platform (simple, $)
+  - **Option 2**: Railway (simple, $)
+  - **Option 3**: Render (free tier available)
+  - **Option 4**: AWS EC2 (more control, $$)
+  - **Option 5**: Heroku (easy, $$)
+- Set up production server
+- Install dependencies
+- Configure environment variables
+- Set up process manager (supervisor or PM2)
+- Configure Nginx as reverse proxy
+- Set up SSL certificate (Let's Encrypt)
+- Configure database backups
+
+**Step 12.3: Frontend Deployment**
+- Build production bundle (`npm run build`)
+- Choose hosting:
+  - **Option 1**: Vercel (recommended, free)
+  - **Option 2**: Netlify (free)
+  - **Option 3**: AWS S3 + CloudFront
+  - **Option 4**: Same server as backend
+- Configure environment variables (API URL)
+- Set up custom domain
+- Configure redirects for SPA routing
+- Set up SSL
+
+**Step 12.4: Database Migration**
+- Export development data if needed
+- Run Alembic migrations on production DB
+- Verify schema correctness
+- Set up automated backups
+- Configure connection pooling
+
+**Step 12.5: Monitoring Setup**
+- Set up basic logging
+- Implement health check monitoring (UptimeRobot)
+- Set up error alerts (email/Slack)
+- Monitor API usage and costs
+- Track user analytics (optional)
+
+---
+
+### **PHASE 13: Launch & Iteration (Days 56+)**
+
+**Step 13.1: Soft Launch**
+- Deploy to production
+- Test all features in production
+- Share with beta users (friends, colleagues)
+- Collect initial feedback
+- Monitor for errors and crashes
+- Track performance metrics
+
+**Step 13.2: User Feedback Collection**
+- Create feedback form
+- Monitor user behavior
+- Identify pain points
+- Track feature usage
+- Identify most requested features
+- Note common error patterns
+
+**Step 13.3: Iteration Cycle**
+- Fix critical issues immediately
+- Plan feature improvements
+- Optimize based on usage patterns
+- Reduce API costs where possible
+- Improve documentation based on user questions
+- Add requested features in priority order
+
+**Step 13.4: Marketing & Growth**
+- Create demo video
+- Write blog post about the platform
+- Share on social media
+- Post on Product Hunt / Reddit
+- Write technical article (if interesting architecture)
+- Gather testimonials
+
+---
+
+## **COST ESTIMATION & OPTIMIZATION**
+
+### **API Costs (Approximate)**
+
+**OpenAI Pricing:**
+- GPT-3.5-turbo: $0.0015/1K tokens (input), $0.002/1K tokens (output)
+- GPT-4: $0.03/1K tokens (input), $0.06/1K tokens (output)
+- Embeddings (text-embedding-3-small): $0.00002/1K tokens
+- Whisper: $0.006/minute
+
+**Expected Monthly Costs (100 active users):**
+- Embeddings: ~$5-10 (one-time per document)
+- Chat (GPT-3.5): ~$20-50
+- Quiz Generation (GPT-4): ~$30-60
+- Speech-to-text: ~$10-20
+- **Total: $65-140/month**
+
+**Free Tier Alternatives:**
+- **Groq**: Free tier with rate limits (llama3-70b, mixtral)
+- **HuggingFace Inference API**: Free tier available
+- **Local models**: Via Ollama (no API costs, requires GPU)
+
+**Optimization Tips:**
+- Cache embeddings (never regenerate)
+- Cache common queries
+- Use GPT-3.5 for chat, GPT-4 only for quiz generation
+- Implement user limits (messages per day)
+- Use shorter context windows when possible
+- Batch API calls
+
+---
+
+## **KEY SUCCESS FACTORS**
+
+1. **Start Simple**: Get core features working before adding complexity
+2. **Test Early**: Test each component before moving to next phase
+3. **User Feedback**: Get real user feedback as early as possible
+4. **API Management**: Monitor API usage and costs closely
+5. **Error Handling**: Robust error handling saves debugging time
+6. **Documentation**: Document as you build (easier than retrofitting)
+7. **Security First**: Implement security from the start, not as afterthought
+8. **Performance**: Optimize critical paths (upload, search, chat)
+9. **Scalability**: Design for growth but don't over-engineer initially
+10. **Iteration**: Launch MVP, then improve based on real usage
+
+---
+
+This execution plan provides a clear, sequential path to building your Multi-Function AI Platform without cloud complexity, using API-based AI services for simplicity and cost-effectiveness. Each phase builds on the previous one, ensuring solid foundations before adding new features.
+
+
+groq pai: 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
+open ai api: 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
+mongodb url: mongodb+srv://myuser:milin.123@cluster1.0urguzc.mongodb.net/?appName=Cluster1
